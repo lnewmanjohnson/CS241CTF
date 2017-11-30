@@ -1,4 +1,6 @@
 *.pyc
 *.py~
 *.test_output
+*.xml
+*.iml
 score
