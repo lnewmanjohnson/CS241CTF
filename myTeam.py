@@ -22,7 +22,7 @@ import game
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first = 'DummyAgent', second = 'DummyAgent'):
+               first = 'TestAgent', second = 'TestAgent'):
   """
   This function should return a list of two agents that will form the
   team, initialized using firstIndex and secondIndex as their agent
@@ -45,12 +45,14 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
-class DummyAgent(CaptureAgent):
+class TestAgent(CaptureAgent):
   """
   A Dummy agent to serve as an example of the necessary agent structure.
   You should look at baselineTeam.py for more details about how to
   create an agent as this is the bare minimum.
   """
+
+  beliefs = util.Counter() # Keep track of beliefs about location of opponents (tuple of 2 positions with prob)
 
   def registerInitialState(self, gameState):
     """
@@ -77,16 +79,33 @@ class DummyAgent(CaptureAgent):
     Your initialization code goes here, if you need any.
     '''
 
+    #Init beliefs with starting positions of opponents
+    belief = [(0, 0), (0, 0)]
+    for i in range(2):
+      o = self.getOpponents(gameState)
+      belief[i] = gameState.getAgentPosition(o[i])
+    TestAgent.beliefs[tuple(belief)] = 1.0
+
+    self.start = gameState.getAgentPosition(self.index)  # Start position
+
 
   def chooseAction(self, gameState):
     """
     Picks among actions randomly.
     """
+
+    teammate_index = (self.index + 2) % 4
+    teammate = gameState.getAgentState(teammate_index)
+
+    # TODO: Update beliefs based on new observations and possible moves
+    beliefs = TestAgent.beliefs
+    #print(gameState.getAgentDistances())
+    #print(beliefs)
+
     actions = gameState.getLegalActions(self.index)
 
     '''
     You should change this in your own agent.
     '''
-
     return random.choice(actions)
 
