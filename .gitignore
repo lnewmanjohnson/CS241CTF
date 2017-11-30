@@ -1,3 +1,4 @@
 *.pyc
 *.py~
 *.test_output
+score
