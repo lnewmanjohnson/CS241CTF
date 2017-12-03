@@ -97,13 +97,16 @@ class TestDefender(CaptureAgent):
 
 
     def chooseAction(self, gameState): #TODO
-        self.elapseTime(gameState)
+        self.observe(gameState)
+        #start by observing the enemies and updating
 
 
         #target = determineTarget(gameState)
 
-    #def determineTarget(gameState): #TODO
+    def determineTarget(gameState): #TODO
         #DETERMINE WHICH ENEMY IS MOST DANGEROUS, OR WHETHER ITS A 2v1
+
+
 
 
 
@@ -117,27 +120,24 @@ class TestDefender(CaptureAgent):
         selfPosition = gameState.getAgentState(self.index).getPosition()
         teammatePosition = gameState.getAgentState((self.index + 2) % 4)
 
-        #reweighting distribution based on new information
-        for state in distribution:
-            i = 0
-            for noisyDistance in noisyDistances:
-                if (i in self.enemyIndices):
-                    #test if its an enemy distance
-                    if (i < 2):
-                        #the conditional is only to test if its gonna be enemy A or B
-                        distributionA[state] = distributionA[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[i])
-                    else:
-                        distributionB[state] = distributionB[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[i])
-                i += 1
-        distributionA.normalize()
-        distributionB.normalize()
 
+        #reweighting distribution based on new information
+        distributionA = self.getBeliefDistribution(self.particleListA)
+        #reweight first distribution based on the noisyDistance we get for enemy A
+        for state in distributionA:
+            distributionA[state] = distributionA[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemyIndices[0]])
+        distributionA.normalize()
+        #reweight first distribution based on the noisyDistance we get for enemy B
+        for state in distributionB:
+            distributionB[state] = distributionB[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemyIndices[1]])
+        distributionB.normalize()
+        
         #test for bottoming out, which should be rare but is a good test none the less
         if (distributionA.totalCount() == 0):
-            self.particleListA = self.initializeUniformly()
+            self.particleListA = self.initializeUniformly(particleListA)
             distributionA = self.getBeliefDistribution(particleListA)
         if (distributionB.totalCount() == 0):
-            self.particleListB = self.initializeUniformly()
+            self.particleListB = self.initializeUniformly(particleListB)
             distributionB = self.getBeliefDistribution(particleListB)
 
         #resample for next time
@@ -169,29 +169,6 @@ class TestDefender(CaptureAgent):
                 #this is an obstruse way of getting a random element of the possiblePositions array
                 i += 1
 
-
-
-
-
-        if (self.index < 2):
-            #AKA it is one of the "A" member of a team
-            i = 0
-            if (self.index == 0):
-                #it needs to elapseTime for the enemy index == 3
-                targetIndex = 4
-            else:
-                #it needs to elapseTime for the enemy index == 0
-                targetIndex = 0
-        else:
-            #AKA it is one of the "B" members of a team
-            if (self.index == 2):
-                #it needs to elapseTime for the enemy index == 1
-                targetIndex = 1
-
-            else:
-                #it needs to elapseTime for the enemy index == 2
-                targetIndex = 2
-
     def getBeliefDistribution(self, particleList):
         distribution = util.Counter()
         for particle in particleList:
@@ -200,7 +177,7 @@ class TestDefender(CaptureAgent):
         return distribution
 
         
-    def initializeUniformly(self):
+    def initializeUniformly(self, particleList):
         #TODO this is not super important but it is a good failsafe for if the distribution bottoms out in a weird way
         newParticleList = []
         randomizedPositions = random.shuffle(legalPositions)
