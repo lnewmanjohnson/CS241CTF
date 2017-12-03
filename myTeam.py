@@ -60,7 +60,7 @@ class TestDefender(CaptureAgent):
 
         CaptureAgent.registerInitialState(self, gameState)
 
-        self.numParticles = 300
+        self.numParticles = 100
         self.start = gameState.getAgentPosition(self.index)  # Start position
 
         self.enemyIndices = gameState.getRedTeamIndices()
@@ -80,11 +80,11 @@ class TestDefender(CaptureAgent):
         distributionB = self.getBeliefDistribution(self.particleListB)
 
         #this is based off domain knowledge that they start in the opposite corner
-        enemyStartA = [1, 2]
-        enemyStartB = [1, 1]
+        enemyStartA = (1, 2)
+        enemyStartB = (1, 1)
         if (self.index in gameState.getRedTeamIndices()):
-            enemyStartA = [30, 13]
-            enemyStartB = [30, 14]
+            enemyStartA = (30, 13)
+            enemyStartB = (30, 14)
 
         #fill out the prelim particleLists with the particles representing the enemies in the corner
         i = 1
@@ -99,12 +99,43 @@ class TestDefender(CaptureAgent):
     def chooseAction(self, gameState): #TODO
         self.observe(gameState)
         #start by observing the enemies and updating
+        target = self.determineTarget(gameState)
+        print("ran determineTarget and got:",target)
 
-
-        #target = determineTarget(gameState)
-
-    def determineTarget(gameState): #TODO
+    def determineTarget(self, gameState): #TODO
         #DETERMINE WHICH ENEMY IS MOST DANGEROUS, OR WHETHER ITS A 2v1
+        #this function returns the index of the target
+        midline = 15.5 #between lines x = 15 and x = 16
+        myPos = gameState.getAgentPosition(self.index)
+        homeWall = None #should throw error if not changed
+        focalPoint =  [None, None] #should throw error if not changed
+        if (self.index in gameState.getRedTeamIndices()):
+            homeWall = 0
+            focalPoint = (3, 8)
+        else:
+            homeWall = 31
+            focalPoint = (28, 7)
+        #switch to figure out which place were defending
+
+        distributionA = self.getBeliefDistribution(self.particleListA)
+        print("distributionA:",distributionA)
+        threatA = 0
+        for state in distributionA:
+            print("state in distA:", state)
+            print("focalPoint:",focalPoint)
+            threatA += self.distancer.getDistance(state, focalPoint)*distributionA[state]
+        distributionB = self.getBeliefDistribution(self.particleListB)
+
+        threatB = 0
+        for state in distributionB:
+            threatB += self.distancer.getDistance(state, focalPoint)*distributionB[state]
+
+        if (threatA >= threatB): #This >= is not terribly meaningful but biases very slightly toward the A agent.
+            return self.enemyIndices[0]
+        else:
+            return self.enemyIndices[1]
+
+
 
 
 
@@ -123,22 +154,23 @@ class TestDefender(CaptureAgent):
 
         #reweighting distribution based on new information
         distributionA = self.getBeliefDistribution(self.particleListA)
+        distributionB = self.getBeliefDistribution(self.particleListB)
         #reweight first distribution based on the noisyDistance we get for enemy A
         for state in distributionA:
-            distributionA[state] = distributionA[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemyIndices[0]])
+            distributionA[state] = distributionA[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[self.enemyIndices[0]])
         distributionA.normalize()
         #reweight first distribution based on the noisyDistance we get for enemy B
         for state in distributionB:
-            distributionB[state] = distributionB[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemyIndices[1]])
+            distributionB[state] = distributionB[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[self.enemyIndices[1]])
         distributionB.normalize()
         
         #test for bottoming out, which should be rare but is a good test none the less
         if (distributionA.totalCount() == 0):
-            self.particleListA = self.initializeUniformly(particleListA)
-            distributionA = self.getBeliefDistribution(particleListA)
+            self.particleListA = self.initializeUniformly(self.particleListA)
+            distributionA = self.getBeliefDistribution(self.particleListA)
         if (distributionB.totalCount() == 0):
-            self.particleListB = self.initializeUniformly(particleListB)
-            distributionB = self.getBeliefDistribution(particleListB)
+            self.particleListB = self.initializeUniformly(self.particleListB)
+            distributionB = self.getBeliefDistribution(self.particleListB)
 
         #resample for next time
         self.particleListA = []
@@ -172,7 +204,7 @@ class TestDefender(CaptureAgent):
     def getBeliefDistribution(self, particleList):
         distribution = util.Counter()
         for particle in particleList:
-            distribution[particle] += 1
+            distribution[tuple(particle)] += 1
         distribution.normalize()
         return distribution
 
