@@ -46,38 +46,52 @@ def createTeam(firstIndex, secondIndex, isRed,
 ##########
 
 class DummyAgent(CaptureAgent):
-  """
-  A Dummy agent to serve as an example of the necessary agent structure.
-  You should look at baselineTeam.py for more details about how to
-  create an agent as this is the bare minimum.
-  """
 
     def registerInitialState(self, gameState):
 
-    """
-    This method handles the initial setup of the
-    agent to populate useful fields (such as what team
-    we're on).
+        """
+        This method handles the initial setup of the
+        agent to populate useful fields (such as what team
+        we're on).
 
-    A distanceCalculator instance caches the maze distances
-    between each pair of positions, so your agents can use:
-    self.distancer.getDistance(p1, p2)
+        A distanceCalculator instance caches the maze distances
+        between each pair of positions, so your agents can use:
+        self.distancer.getDistance(p1, p2)
 
-    IMPORTANT: This method may run for at most 15 seconds.
-    """
+        IMPORTANT: This method may run for at most 15 seconds.
+        """
 
-    '''
-    Make sure you do not delete the following line. If you would like to
-    use Manhattan distances instead of maze distances in order to save
-    on initialization time, please take a look at
-    CaptureAgent.registerInitialState in captureAgents.py.
-    '''
+        '''
+        Make sure you do not delete the following line. If you would like to
+        use Manhattan distances instead of maze distances in order to save
+        on initialization time, please take a look at
+        CaptureAgent.registerInitialState in captureAgents.py.
+        '''
         CaptureAgent.registerInitialState(self, gameState)
 
         '''
         Your initialization code goes here, if you need any.
         '''
+        PF = ParticleFilter()
 
+    def chooseAction(self, gameState):
+        PF = ParticleFilter()
+        self.elapseTime(gameState)
+        self.observe(gameState)
+        """
+        Picks among actions randomly.
+        """
+        actions = gameState.getLegalActions(self.index)
+
+        '''
+        You should change this in your own agent.
+        '''
+
+        return random.choice(actions)
+
+class ParticleFilter():
+
+    def __init__(self):
         """
         parameters
         """
@@ -113,60 +127,35 @@ class DummyAgent(CaptureAgent):
                 if not(gameState.hasWall(x,y)):
                     self.legalPositions.append((x,y))
 
-            #create the objects that are going to be persistent
-        self.particleListA = []     #starts at 30, 13 or 1,2
-        self.particleListB = []     #starts at 30, 14 or 1,1
-        self.distributionA = self.getBeliefDistribution(self.particleListA)
-        self.distributionB = self.getBeliefDistribution(self.particleListB)
-        self.enemyDistributions = [None, None, None, None]
-        if (self.team == "red"):
-            self.enemyDistributions[1] = self.distributionA
-            self.enemyDistributions[3] = self.distributionB
-        else:
-            self.enemyDistributions[0] = self.distributionA
-            self.enemyDistributions[2] = self.distributionB
-
-            #this is based off domain knowledge that they start in the opposite corner
-        if (self.index in gameState.getRedTeamIndices()):
-            enemyStartA = (30, 13)
-            enemyStartB = (30, 14)
-        else:
-            enemyStartA = (1, 2)
-            enemyStartB = (1, 1)
-
-            #fill out the prelim particleLists with the particles representing the enemies in the corner
-        i = 1
-        while (i <= self.numParticles):
-            self.particleListA.append(enemyStartA)
-            self.particleListB.append(enemyStartB)
-            i += 1
 
 
-    def chooseAction(self, gameState):
-        self.elapseTime(gameState)
-        self.observe(gameState)
-        """
-        Picks among actions randomly.
-        """
-        actions = gameState.getLegalActions(self.index)
+        #create the objects that are going to be persistent
+    self.particleListA = []     #starts at 30, 13 or 1,2
+    self.particleListB = []     #starts at 30, 14 or 1,1
+    self.distributionA = self.getBeliefDistribution(self.particleListA)
+    self.distributionB = self.getBeliefDistribution(self.particleListB)
+    self.enemyDistributions = [None, None, None, None]
+    if (self.team == "red"):
+        self.enemyDistributions[1] = self.distributionA
+        self.enemyDistributions[3] = self.distributionB
+    else:
+        self.enemyDistributions[0] = self.distributionA
+        self.enemyDistributions[2] = self.distributionB
 
-        '''
-        You should change this in your own agent.
-        '''
+        #this is based off domain knowledge that they start in the opposite corner
+    if (self.index in gameState.getRedTeamIndices()):
+        enemyStartA = (30, 13)
+        enemyStartB = (30, 14)
+    else:
+        enemyStartA = (1, 2)
+        enemyStartB = (1, 1)
 
-        return random.choice(actions)
-
-    def getSuccessor(self, gameState, action):
-        """
-        Finds the next successor which is a grid position (location tuple).
-        """
-        successor = gameState.generateSuccessor(self.index, action)
-        pos = successor.getAgentState(self.index).getPosition()
-        if pos != util.nearestPoint(pos):
-            # Only half a grid position was covered
-            return successor.generateSuccessor(self.index, action)
-        else:
-            return successor
+        #fill out the prelim particleLists with the particles representing the enemies in the corner
+    i = 1
+    while (i <= self.numParticles):
+        self.particleListA.append(enemyStartA)
+        self.particleListB.append(enemyStartB)
+        i += 1
 
     def observe(self, gameState):
         #this may be too slow to run if planning gets particularly complex
