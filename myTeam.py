@@ -148,34 +148,28 @@ class TestDefender(CaptureAgent):
         #start by elapsing time for the move just previous and observing the enemies and updating beliefs
 
         target = self.determineTarget(gameState)
-        print("target:",target)
         targetDistribution = self.enemyDistributions[target]
-        print("targetDistribution:", targetDistribution)
         targetDistribution = self.enemyDistributions[target].copy()
-        print("targetDistribution after copy:", targetDistribution)
         probInBackCourt = 0
         probInLower = 0
         for state in targetDistribution:
-            print("GOT TO STATE IN targetDistribution was:", state)
-            print("GOT TO STATE IN targetDistribution [0] was:", state[0])
+            # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
             if (self.team == "red" and state[0] > 18):
                 probInBackCourt += targetDistribution[state]
-                print("probInBackCourt:",probInBackCourt)
                 if (state[1] <= 7):
                     probInLower += targetDistribution[state]
+                print("probInBackCourt for ", target, " is: ", probInBackCourt)
             elif (self.team == "blue" and state[0] < 13):
                 probInBackCourt += targetDistribution[state]
                 if (state[1] <= 7):
                     probInLower += targetDistribution[state]
 
         #TODO currently it does not know when enemy is actually in back court
-        print("probInBackCourt:",probInBackCourt)
         if (probInBackCourt > .5):                                  
         #the strictness of these inequalities probably does not really matter
-            print("self.assumePost(gameState, (probInLower > .5)):",self.assumePost(gameState, (probInLower > .5)))
             return self.assumePost(gameState, (probInLower > .5))
         else:
-            print("enemy was not in backCourt and this function is not yet defined")
+            print("WARN: The enemy was not in backCourt and the chase function")
 
 
     def assumePost(self, gameState, isLower):
@@ -231,11 +225,8 @@ class TestDefender(CaptureAgent):
         #switch to figure out which place were defending
 
         distributionA = self.getBeliefDistribution(self.particleListA)
-        print("distributionA:",distributionA)
         threatA = 0
         for state in distributionA:
-            print("state in distA:", state)
-            print("focalPoint:",focalPoint)
             threatA += self.distancer.getDistance(state, focalPoint)*distributionA[state]
         distributionB = self.getBeliefDistribution(self.particleListB)
 
@@ -279,9 +270,6 @@ class TestDefender(CaptureAgent):
             self.particleListB = self.initializeUniformly(self.particleListB)
             self.distributionB = self.getBeliefDistribution(self.particleListB)
 
-
-        print("self.distributionA:", self.distributionA)
-        print("noisyDistances[self.enemyIndices[0]]:", noisyDistances[self.enemyIndices[0]])
         #resample for next time
         self.particleListA = []
         self.particleListB = []
@@ -351,10 +339,8 @@ class TestDefender(CaptureAgent):
         print("WARN: InitializeUniformly() was called and has been called a total of: ", self.numInitializedUniformly, " times this game.")
         #TODO this is not super important but it is a good failsafe for if the distribution bottoms out in a weird way
         newParticleList = []
-        randomizedPositions = self.legalPositions
+        randomizedPositions = list(self.legalPositions)
         random.shuffle(randomizedPositions)
-        print("self.legalPositions:",self.legalPositions)
-        print("randomizedPositions:", randomizedPositions)
         i = 0
         while (i <= self.numParticles):
             for state in randomizedPositions:
