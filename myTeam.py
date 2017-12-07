@@ -166,8 +166,8 @@ class TestDefender(MyAgents):
         #start by elapsing time for the move just previous and observing the enemies and updating beliefs
 
         enemyDistributions = [None, MyAgents.distributionA, None, MyAgents.distributionB]
-        target = self.determineTarget(gameState)
-        #targetDistribution = self.enemyDistributions[target]
+        target = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
+        #print("target is:", target)
         if (target == "A"):
             targetDistribution = MyAgents.distributionA
         else:
@@ -176,7 +176,7 @@ class TestDefender(MyAgents):
         zoneDistribution = [0, 0 ,0]
         for state in targetDistribution:
             # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
-            if (self.team == "red" and state[0] > 17):
+            if (self.team == "red" and state[0] > 18):
                 probInBackCourt += targetDistribution[state]
                 if (state[1] <= 4):
                     #tests for Zone A
@@ -197,7 +197,7 @@ class TestDefender(MyAgents):
                 else:
                     #tests for Zone C
                     zoneDistribution[2] += targetDistribution[state]
-        #print("probInBackCourt for ", target, " is: ", probInBackCourt)
+        print("probInBackCourt for ", target, " is: ", probInBackCourt)
         #TODO currently it does not know when enemy is actually in back court
         if (probInBackCourt > .5):                                  
         #the strictness of these inequalities probably does not really matter
@@ -292,13 +292,13 @@ class TestDefender(MyAgents):
             return successor
 
 
-    def determineTarget(self, gameState): #TODO this needs to be more subtly done
+    def determineTarget(self, gameState, distributionA, distributionB): #TODO this needs to be more subtly done
         #this function returns the index of the enemy most dangerous right now
         midline = 15.5 #between lines x = 15 and x = 16
         myPos = gameState.getAgentPosition(self.index)
         homeWall = None #should throw error if not changed
         focalPoint =  [None, None] #should throw error if not changed
-        if (self.index in gameState.getRedTeamIndices()):
+        if (self.team == "red"):
             homeWall = 0
             focalPoint = (3, 8)
         else:
@@ -306,16 +306,21 @@ class TestDefender(MyAgents):
             focalPoint = (28, 7)
         #switch to figure out which place were defending
 
-        distributionA = self.PF.getBeliefDistribution(MyAgents.particleListA)
         threatA = 0
         for state in distributionA:
-            threatA += self.distancer.getDistance(state, focalPoint)*distributionA[state]
-        distributionB = self.PF.getBeliefDistribution(MyAgents.particleListB)
+            if (self.distancer.getDistance(state, focalPoint) != 0):
+                threatA += (1/(self.distancer.getDistance(state, focalPoint)))*distributionA[state]
+            else:
+                threatA += 1
+
 
         threatB = 0
         for state in distributionB:
-            threatB += self.distancer.getDistance(state, focalPoint)*distributionB[state]
-
+            if (self.distancer.getDistance(state, focalPoint) != 0):
+                threatB += (1/(self.distancer.getDistance(state, focalPoint)))*distributionB[state]
+            else:
+                threatB += 1
+        #print("threatA: ",threatA, " threatB ", threatB)
         if (threatA >= threatB): #This >= is not terribly meaningful but biases very slightly toward the A agent.
             return "A"
         else:
@@ -590,24 +595,22 @@ class ParticleFilter():
 
         selfPosition = gameState.getAgentState(self.index).getPosition()
         noisyDistances = gameState.getAgentDistances()
-        #print("noisyDistances:",noisyDistances)
-        particleLists = [None, particleListA, None, particleListB]
-        
-
         distributionA = self.getBeliefDistribution(particleListA)
         distributionB = self.getBeliefDistribution(particleListB)
         enemyDistributions = [None, distributionA, None, distributionB]
+        particleLists = [None, particleListA, None, particleListB]
 
         returnDistributions = []
         returnLists = []
         for enemy in self.enemyIndices:
             distribution = enemyDistributions[enemy]
             particleList = particleLists[enemy]
+            #if the enemy is in sight range
             if (gameState.getAgentPosition(enemy)):
                 distribution = util.Counter()
                 distribution[gameState.getAgentPosition(enemy)] = 1
 
-
+            #if the enemy is not in sight range
             else:
                 for state in distribution:
                     distribution[state] = distribution[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemy])
