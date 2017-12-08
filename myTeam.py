@@ -188,6 +188,14 @@ class TestDefender(MyAgents):
         bestAction = [None, self.distancer.getDistance(myPos, targetPos)]
         for action in gameState.getLegalActions(self.index):
             successor = self.getSuccessor(gameState, action)
+            if (successor.getAgentState(self.index).configuration.pos == targetPos):
+
+                #the defender is about to eat the enemy
+                if (target == "A"):
+                    MyAgents.distributionA, MyAgents.particleListA = self.PF.eat(target)
+                else:
+                    MyAgents.distributionB, MyAgents.particleListB = self.PF.eat(target)
+
             if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1]):
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(myPos, targetPos)
@@ -300,11 +308,11 @@ class ParticleFilter():
 
             #NOTE: this is based off domain knowledge that they start in the opposite corner
         if (self.index in gameState.getRedTeamIndices()):
-            enemyStartA = (30, 13)
-            enemyStartB = (30, 14)
+            self.enemyStartA = (30, 13)
+            self.enemyStartB = (30, 14)
         else:
-            enemyStartA = (1, 2)
-            enemyStartB = (1, 1)
+            self.enemyStartA = (1, 2)
+            self.enemyStartB = (1, 1)
 
     def observe(self, gameState, particleListA, particleListB, distributionA, distributionB):
         #this function takes the two noisyDistances and edits the distributions
@@ -390,3 +398,15 @@ class ParticleFilter():
                     newParticleList.append(state)
                 i += 1
         return newParticleList
+
+    def eat(self, target):
+        if (target == "A"):
+            distribution = util.Counter()
+            distribution[self.enemyStartA] = 1
+            particleList = [self.enemyStartA] * self.numParticles
+        else:
+            distribution = util.Counter()
+            distribution[self.enemyStartB] = 1
+            particleList = [self.enemyStartB for x in range(self.numParticles)]
+
+        return distribution, particleList
