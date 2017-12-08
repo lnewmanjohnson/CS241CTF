@@ -17,11 +17,6 @@ import random, time, util
 from game import Directions
 import game
 
-#MAIN TODO:
-# make it work on both red and blue side
-# make chase cheat towards the back
-# put in an "eat" check in chase
-
 #################
 # Team creation #
 #################
