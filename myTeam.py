@@ -53,6 +53,8 @@ class MyAgents(CaptureAgent):
     particleListB = []
     isInitialized = False
     numParticles = 1000
+    stats = {}
+
 
     
 class TestDefender(MyAgents):
@@ -77,9 +79,9 @@ class TestDefender(MyAgents):
 
             #set defensePoint to play defense later
         if (self.team == "red"):
-            self.defensePoints = [(12, 11), (13, 7), (13, 4)] #TODO verify that these are optimal positions
+            self.defensePoints = [(13, 4), (13, 7), (12, 11)] #TODO verify that these are optimal positions
         else:
-            self.defensePoints = [(18, 10), (18, 6), (19, 3)] 
+            self.defensePoints = [(19, 3), (18, 6), (18, 10)] 
 
             #create a list of form [a, b] containing the enemy indices
         self.enemyIndices = gameState.getRedTeamIndices()
@@ -111,7 +113,6 @@ class TestDefender(MyAgents):
             self.enemyDistributions[0] = MyAgents.distributionA
             self.enemyDistributions[2] = MyAgents.distributionB
 
-
         self.particleLists = [None, None, None, None]
         if (self.team == "red"):
             self.particleLists[1] = MyAgents.particleListA
@@ -119,6 +120,9 @@ class TestDefender(MyAgents):
         else:
             self.particleLists[0] = MyAgents.particleListA
             self.particleLists[2] = MyAgents.particleListB
+
+        MyAgents.stats["prevThreatA"] = 0
+        MyAgents.stats["prevThreatB"] = 0
 
 
 
@@ -131,12 +135,13 @@ class TestDefender(MyAgents):
         if (self.index == 0 or self.index == 3):
             #elapseTime for the enemy A agent
             MyAgents.particleListB = self.PF.elapseTime(gameState, MyAgents.particleListB)
-        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB)
-        #MyAgents.distributionA = self.PF.getBeliefDistribution(MyAgents.particleListA)
-        #MyAgents.distributionB = self.PF.getBeliefDistribution(MyAgents.particleListB)
 
+        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB, MyAgents.stats)
         enemyDistributions = [None, MyAgents.distributionA, None, MyAgents.distributionB]
-        target = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
+        target, prevThreatA, prevThreatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
+        MyAgents.stats["prevThreatA"] = prevThreatA
+        MyAgents.stats["prevThreatB"] = prevThreatB
+
         if (target == "A"):
             targetDistribution = MyAgents.distributionA
         else:
@@ -150,13 +155,13 @@ class TestDefender(MyAgents):
                 if (state[1] <= 4):
                     #tests for Zone A
                     zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 8):
+                elif (state[1] <= 9):
                     #tests for Zone B
                     zoneDistribution[1] += targetDistribution[state]
                 else:
                     #tests for Zone C
                     zoneDistribution[2] += targetDistribution[state]
-            elif (self.team == "blue" and state[0] < 13):
+            elif (self.team == "blue" and state[0] < 13):               #TODO I just did this for RED, BLUE is outdated
                 if (state[1] <= 4):
                     #tests for Zone A
                     zoneDistribution[0] += targetDistribution[state]
@@ -166,6 +171,7 @@ class TestDefender(MyAgents):
                 else:
                     #tests for Zone C
                     zoneDistribution[2] += targetDistribution[state]
+
         #print("probInBackCourt for ", target, " is: ", probInBackCourt)
         #TODO currently it does not know when enemy is actually in back court its done by a focal point
         if (probInBackCourt > .5):                                  
@@ -179,26 +185,32 @@ class TestDefender(MyAgents):
     def chase(self, gameState, target):
         #this function just tries to run to the square where the ghost most likely is
 
+
         if (target == "A"):
             targetPos = MyAgents.distributionA.argMax()
         else:
             targetPos = MyAgents.distributionB.argMax()
+
+        #print("running chase with target: ", target)
+        #print("currently at: ", gameState.getAgentPosition(self.index))
+        #print("trying to reach: ", targetPos)
         #print("PROTOCOL: chasing target ", target, " at pos: ", targetPos)
         myPos = gameState.getAgentPosition(self.index)
-        bestAction = [None, self.distancer.getDistance(myPos, targetPos)]
+        bestAction = ["Stop", self.distancer.getDistance(myPos, targetPos)]
         for action in gameState.getLegalActions(self.index):
             successor = self.getSuccessor(gameState, action)
-            if (successor.getAgentState(self.index).configuration.pos == targetPos):
-
+            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0] < 16):
                 #the defender is about to eat the enemy
                 if (target == "A"):
                     MyAgents.distributionA, MyAgents.particleListA = self.PF.eat(target)
                 else:
                     MyAgents.distributionB, MyAgents.particleListB = self.PF.eat(target)
+                return action
 
-            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1]):
+            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 16): #TODO make '16' this work for blue too
                 bestAction[0] = action
-                bestAction[1] = self.distancer.getDistance(myPos, targetPos)
+                bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
+        #print("chose to do: ", bestAction[0])
         return bestAction[0]
         
 
@@ -206,6 +218,8 @@ class TestDefender(MyAgents):
     def pointDefense(self, gameState, probInBackCourt, zoneDistribution):
         #this function is a switch to tell the defenders how to play point defense
 
+        #print("running assumePost with zone: ", zoneDistribution.index(max(zoneDistribution)))
+        #print("trying to reach: ", self.defensePoints[zoneDistribution.index(max(zoneDistribution))])
         return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
         #TODO flesh out a more nuanced transition function between posts
 
@@ -239,36 +253,18 @@ class TestDefender(MyAgents):
     def determineTarget(self, gameState, distributionA, distributionB):
         #this function returns the index of the enemy most likely playing offense
 
-        midline = 15.5 #between lines x = 15 and x = 16
-        myPos = gameState.getAgentPosition(self.index)
-        homeWall = None #should throw error if not changed
-        focalPoint =  [None, None] #should throw error if not changed
-        if (self.team == "red"):
-            homeWall = 0
-            focalPoint = (3, 8)
-        else:
-            homeWall = 31
-            focalPoint = (28, 7)
-        #switch to figure out which place were defending
-
         threatA = 0
         for state in distributionA:
-            if (self.distancer.getDistance(state, focalPoint) != 0):
-                threatA += (1/(self.distancer.getDistance(state, focalPoint)))*distributionA[state]
-            else:
-                threatA += 1
-
-
+            threatA += (1.0/(state[0]))*distributionA[state]
+        #print("threatA: ", threatA)
         threatB = 0
         for state in distributionB:
-            if (self.distancer.getDistance(state, focalPoint) != 0):
-                threatB += (1/(self.distancer.getDistance(state, focalPoint)))*distributionB[state]
-            else:
-                threatB += 1
-        if (threatA >= threatB): #This >= is not terribly meaningful but biases very slightly toward the A agent.
-            return "A"
+            threatB += (1.0/(state[0]))*distributionB[state]
+        #print("threatB: ", threatB)
+        if (threatA >= threatB):
+            return "A", threatA, threatB
         else:
-            return "B"
+            return "B", threatA, threatB
 
 class ParticleFilter():
 
@@ -314,7 +310,7 @@ class ParticleFilter():
             self.enemyStartA = (1, 2)
             self.enemyStartB = (1, 1)
 
-    def observe(self, gameState, particleListA, particleListB, distributionA, distributionB):
+    def observe(self, gameState, particleListA, particleListB, distributionA, distributionB, stats):
         #this function takes the two noisyDistances and edits the distributions
         #NOTE: since getDistanceProb returns only 0 or 1/13 this might as well be a boolean operation
         #RETURN: this returns 4 objects, IN THIS ORDER: [particleListA, distributionA, particleListB, distributionB]
@@ -327,6 +323,7 @@ class ParticleFilter():
         distributionB = self.getBeliefDistribution(particleListB)
         enemyDistributions = [None, distributionA, None, distributionB]
         particleLists = [None, particleListA, None, particleListB]
+        prevThreats = [None, stats["prevThreatA"], None, stats["prevThreatB"]]
 
         returnObjs = []
         for enemy in self.enemyIndices:
@@ -349,6 +346,17 @@ class ParticleFilter():
                     #print("DISTRIBUTION FOR:", enemy, "JUST BOTTOMED OUT. #:", self.numInitializedUniformly)
                     particleList = self.initializeUniformly(particleList)
                     distribution = self.getBeliefDistribution(particleList)
+                    for state in distribution:
+                        if(prevThreats[enemy] < .25 and state[0] < selfPosition[0]):
+                            #print("badState: ", state, " was pre-removed")
+                            distribution[state] = 0
+                        elif(prevThreats[enemy] > .50 and state[0] > selfPosition[0]):
+                            print("THE BACKWARDS ANTI-BIMODAL WAS CALLED")
+                            distribution[state] = 0
+                        else:
+                            distribution[state] = distribution[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemy])
+                    distribution.normalize()
+                    #print("After: ", distribution)
 
             #resample for next time
             returnList = []
