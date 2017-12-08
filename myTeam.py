@@ -17,9 +17,6 @@ import random, time, util
 from game import Directions
 import game
 
-#MAIN TODO:
-# make it work on both red and blue side
-# make chase cheat towards the back
 
 #################
 # Team creation #
@@ -181,7 +178,8 @@ class TestDefender(MyAgents):
 
 
     def chase(self, gameState, target):
-        
+        #this function just tries to run to the square where the ghost most likely is
+
         if (target == "A"):
             targetPos = MyAgents.distributionA.argMax()
         else:
@@ -199,12 +197,14 @@ class TestDefender(MyAgents):
 
 
     def pointDefense(self, gameState, probInBackCourt, zoneDistribution):
+        #this function is a switch to tell the defenders how to play point defense
+
         return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
         #TODO flesh out a more nuanced transition function between posts
 
 
     def assumePost(self, gameState, postIndex):
-        #will send the agent toward either post 0, 1, or 2 (a, b, c) in the perimeter
+        #this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
         #best action is the one that gets closest to the defense point, in this case B since were in lower
@@ -215,32 +215,6 @@ class TestDefender(MyAgents):
                 bestAction[1] = self.distancer.getDistance(myPos, self.defensePoints[postIndex])
         return bestAction[0]
 
-
-        """
-        if (isLower):
-            bestAction = [None, self.distancer.getDistance(myPos, self.defensePoints[1])]
-            #best action is the one that gets closest to the defense point, in this case B since were in lower
-            for action in gameState.getLegalActions(self.index):
-                successor = self.getSuccessor(gameState, action)
-                print("successor:", successor)
-                print("self.defensePoints:", self.defensePoints)
-                if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, self.defensePoints[1]) < bestAction[1]):
-                    bestAction[0] = action
-                    bestAction[1] = self.distancer.getDistance(myPos, self.defensePoints[1])
-            return bestAction[0]
-        else:
-            #doing the same thing as above but for the "A" defense point
-            bestAction = [None, self.distancer.getDistance(myPos, self.defensePoints[0])]
-            #best action is the one that gets closest to the defense point, in this case B since were in lower
-            for action in gameState.getLegalActions(self.index):
-                successor = self.getSuccessor(gameState, action)
-                print("successor:", successor)
-                print("self.defensePoints:", self.defensePoints)
-                if (self.distancer.getDistance(successor.getAgentPosition(self.index), self.defensePoints[0]) < bestAction[1]):
-                    bestAction[0] = action
-                    bestAction[1] = self.distancer.getDistance(myPos, self.defensePoints[0])
-            return bestAction[0]
-            """
 
     def getSuccessor(self, gameState, action):
         """
@@ -255,8 +229,9 @@ class TestDefender(MyAgents):
             return successor
 
 
-    def determineTarget(self, gameState, distributionA, distributionB): #TODO this needs to be more subtly done
-        #this function returns the index of the enemy most dangerous right now
+    def determineTarget(self, gameState, distributionA, distributionB):
+        #this function returns the index of the enemy most likely playing offense
+
         midline = 15.5 #between lines x = 15 and x = 16
         myPos = gameState.getAgentPosition(self.index)
         homeWall = None #should throw error if not changed
@@ -301,8 +276,9 @@ class ParticleFilter():
 
         self.numInitializedUniformly = 0
 
+
         """
-        setting team specific objects
+        pre-processing some useful persistent objects
         """
 
             #set team name
@@ -317,20 +293,13 @@ class ParticleFilter():
         else:
             self.enemyIndices = gameState.getRedTeamIndices()
 
-
-        """
-        pre-processing some useful persistent objects
-        """
-
-            #built list of legalPositions
-            #NOTE: USEFUL ONLY FOR INITIALIZEUNIFORMLY() AND MAY BE MOVED IF THAT ISNT USED
         self.legalPositions = []
         for x in range(0, 32):
             for y in range(0, 16):
                 if not(gameState.hasWall(x,y)):
                     self.legalPositions.append((x,y))
 
-            #this is based off domain knowledge that they start in the opposite corner
+            #NOTE: this is based off domain knowledge that they start in the opposite corner
         if (self.index in gameState.getRedTeamIndices()):
             enemyStartA = (30, 13)
             enemyStartB = (30, 14)
@@ -338,11 +307,9 @@ class ParticleFilter():
             enemyStartA = (1, 2)
             enemyStartB = (1, 1)
 
-    def testEdit(self, distributionA):
-        distributionA = util.Counter()
-        return distributionA
-
     def observe(self, gameState, particleListA, particleListB, distributionA, distributionB):
+        #this function takes the two noisyDistances and edits the distributions
+        #NOTE: since getDistanceProb returns only 0 or 1/13 this might as well be a boolean operation
 
         selfPosition = gameState.getAgentState(self.index).getPosition()
         noisyDistances = gameState.getAgentDistances()
@@ -358,6 +325,9 @@ class ParticleFilter():
             #if the enemy is in sight range
             if (gameState.getAgentPosition(enemy)):
                 distribution = util.Counter()
+                #test to see if we eat the pacman
+                print("selfPosition:", selfPosition)
+                print("getAgentPosition:", gameState.getAgentPosition(enemy))
                 distribution[gameState.getAgentPosition(enemy)] = 1
 
             #if the enemy is not in sight range
