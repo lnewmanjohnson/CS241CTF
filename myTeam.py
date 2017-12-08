@@ -197,10 +197,10 @@ class TestDefender(MyAgents):
         else:
             targetPos = MyAgents.distributionB.argMax()
 
-        #print("running chase with target: ", target)
-        #print("currently at: ", gameState.getAgentPosition(self.index))
-        #print("trying to reach: ", targetPos)
-        #print("PROTOCOL: chasing target ", target, " at pos: ", targetPos)
+        print("running chase with target: ", target)
+        print("currently at: ", gameState.getAgentPosition(self.index))
+        print("trying to reach: ", targetPos)
+        print("PROTOCOL: chasing target ", target, " at pos: ", targetPos)
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, targetPos)]
         for action in gameState.getLegalActions(self.index):
@@ -214,9 +214,10 @@ class TestDefender(MyAgents):
                 return action
 
             if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 16): #TODO make '16' this work for blue too
+                print("replacing to: ", action)
                 bestAction[0] = action
-                bestAction[1] = self.distancer.getDistance(myPos, targetPos)
-        #print("chose to do: ", bestAction[0])
+                bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
+        print("chose to do: ", bestAction[0])
         return bestAction[0]
         
 
