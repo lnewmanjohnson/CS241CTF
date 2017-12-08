@@ -356,6 +356,9 @@ class ParticleFilter():
                         if(prevThreats[enemy] < .25 and state[0] < selfPosition[0]):
                             #print("badState: ", state, " was pre-removed")
                             distribution[state] = 0
+                        elif(prevThreats[enemy] > .50 and state[0] > selfPosition[0]):
+                            print("THE BACKWARDS ANTI-BIMODAL WAS CALLED")
+                            distribution[state] = 0
                         else:
                             distribution[state] = distribution[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemy])
                     distribution.normalize()
