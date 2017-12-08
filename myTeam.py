@@ -67,6 +67,9 @@ class TestDefender(MyAgents):
 
         self.start = gameState.getAgentPosition(self.index)  # Start position
 
+            # of the form [action, position, timeSpentInPosition]
+        self.prevStats = ["Stop", [0, 0], 0]
+
         """
         setting team specific objects
         """
@@ -121,6 +124,7 @@ class TestDefender(MyAgents):
             self.particleLists[0] = MyAgents.particleListA
             self.particleLists[2] = MyAgents.particleListB
 
+            #filling out some default stats
         MyAgents.stats["prevThreatA"] = 0
         MyAgents.stats["prevThreatB"] = 0
 
@@ -199,7 +203,7 @@ class TestDefender(MyAgents):
         bestAction = ["Stop", self.distancer.getDistance(myPos, targetPos)]
         for action in gameState.getLegalActions(self.index):
             successor = self.getSuccessor(gameState, action)
-            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0] < 16):
+            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0] < 15):
                 #the defender is about to eat the enemy
                 if (target == "A"):
                     MyAgents.distributionA, MyAgents.particleListA = self.PF.eat(target)
@@ -207,11 +211,16 @@ class TestDefender(MyAgents):
                     MyAgents.distributionB, MyAgents.particleListB = self.PF.eat(target)
                 return action
 
-            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 16): #TODO make '16' this work for blue too
+            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 15): #TODO make '16' this work for blue too
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
         #print("chose to do: ", bestAction[0])
-        return bestAction[0]
+        if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
+            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions())-1)]
+            self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
+            return randomAction
+        else:
+            return bestAction[0]
         
 
 
@@ -234,7 +243,14 @@ class TestDefender(MyAgents):
             if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, self.defensePoints[postIndex]) < bestAction[1]):
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(myPos, self.defensePoints[postIndex])
-        return bestAction[0]
+
+        #a small method to check if the agent got stuck somehow
+        if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
+            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions())-1)]
+            self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
+            return randomAction
+        else:
+            return bestAction[0]
 
 
     def getSuccessor(self, gameState, action):
@@ -265,6 +281,24 @@ class TestDefender(MyAgents):
             return "A", threatA, threatB
         else:
             return "B", threatA, threatB
+
+    def runStallStats(self, action, successor):
+        # this function runs upkeep on the relevant stall stats and tries to find out 
+        # if the agent is stuck (same move more than 5 times)
+        #prevStats is of the form: [action, position, timeSpentInPosition]
+
+        #print("action:", action)
+        if (action == self.prevStats[0] and successor == self.prevStats[1]):
+            self.prevStats[2] += 1
+            if (self.prevStats[2] >= 5):
+                #print("timeSpentInPosition: ", self.prevStats[2])
+                return True
+        else:
+            self.prevStats[0] = action
+            self.prevStats[1] = successor
+            self.prevStats[2] = 1
+        return False
+
 
 class ParticleFilter():
 
