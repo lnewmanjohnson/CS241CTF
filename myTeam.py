@@ -130,8 +130,8 @@ class TestDefender(MyAgents):
 
 
     def chooseAction(self, gameState):
+        #aw_input()
         #clear = lambda: os.system('cls')
-        #self.inputCode = raw_input()
         #clear()
         if (self.index == 1 or self.index == 2):
             #elapseTime for the enemy B agent
@@ -198,13 +198,14 @@ class TestDefender(MyAgents):
             targetPos = MyAgents.distributionB.argMax()
 
         #print("running chase with target: ", target)
+        #print("currently at: ", gameState.getAgentPosition(self.index))
         #print("trying to reach: ", targetPos)
         #print("PROTOCOL: chasing target ", target, " at pos: ", targetPos)
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, targetPos)]
         for action in gameState.getLegalActions(self.index):
             successor = self.getSuccessor(gameState, action)
-            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos < 16):
+            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0] < 16):
                 #the defender is about to eat the enemy
                 if (target == "A"):
                     MyAgents.distributionA, MyAgents.particleListA = self.PF.eat(target)
@@ -212,7 +213,7 @@ class TestDefender(MyAgents):
                     MyAgents.distributionB, MyAgents.particleListB = self.PF.eat(target)
                 return action
 
-            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 16): #TODO make this work for blue too
+            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 16): #TODO make '16' this work for blue too
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(myPos, targetPos)
         #print("chose to do: ", bestAction[0])
@@ -258,7 +259,6 @@ class TestDefender(MyAgents):
     def determineTarget(self, gameState, distributionA, distributionB):
         #this function returns the index of the enemy most likely playing offense
 
-
         threatA = 0
         for state in distributionA:
             threatA += (1.0/(state[0]))*distributionA[state]
@@ -271,51 +271,6 @@ class TestDefender(MyAgents):
             return "A", threatA, threatB
         else:
             return "B", threatA, threatB
-
-        """
-        threatB = 0
-        for state in distributionB:
-            if (self.distancer.getDistance(state, focalPoint) != 0):
-                threatB += (1/(self.distancer.getDistance(state, focalPoint)))*distributionB[state]
-            else:
-                threatB += 1
-        if (threatA >= threatB): #This >= is not terribly meaningful but biases very slightly toward the A agent.
-            return "A"
-        else:
-            return "B"
-
-
-        midline = 15.5 #between lines x = 15 and x = 16
-        myPos = gameState.getAgentPosition(self.index)
-        homeWall = None #should throw error if not changed
-        focalPoint =  [None, None] #should throw error if not changed
-        if (self.team == "red"):
-            homeWall = 0
-            focalPoint = (3, 8)
-        else:
-            homeWall = 31
-            focalPoint = (28, 7)
-        #switch to figure out which place were defending
-
-        threatA = 0
-        for state in distributionA:
-            if (self.distancer.getDistance(state, focalPoint) != 0):
-                threatA += (1/(self.distancer.getDistance(state, focalPoint)))*distributionA[state]
-            else:
-                threatA += 1
-
-
-        threatB = 0
-        for state in distributionB:
-            if (self.distancer.getDistance(state, focalPoint) != 0):
-                threatB += (1/(self.distancer.getDistance(state, focalPoint)))*distributionB[state]
-            else:
-                threatB += 1
-        if (threatA >= threatB): #This >= is not terribly meaningful but biases very slightly toward the A agent.
-            return "A"
-        else:
-            return "B"
-        """
 
 class ParticleFilter():
 
@@ -404,7 +359,7 @@ class ParticleFilter():
                         else:
                             distribution[state] = distribution[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemy])
                     distribution.normalize()
-                    print("After: ", distribution)
+                    #print("After: ", distribution)
 
             #resample for next time
             returnList = []
