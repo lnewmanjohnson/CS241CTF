@@ -17,6 +17,10 @@ import random, time, util
 from game import Directions
 import game
 
+#MAIN TODO:
+# make it work on both red and blue side
+# make chase cheat towards the back
+# put in an "eat" check in chase
 
 #################
 # Team creation #
@@ -132,9 +136,9 @@ class TestDefender(MyAgents):
         if (self.index == 0 or self.index == 3):
             #elapseTime for the enemy A agent
             MyAgents.particleListB = self.PF.elapseTime(gameState, MyAgents.particleListB)
-        MyAgents.particleListA, MyAgents.particleListB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB)
-        MyAgents.distributionA = self.PF.getBeliefDistribution(MyAgents.particleListA)
-        MyAgents.distributionB = self.PF.getBeliefDistribution(MyAgents.particleListB)
+        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB)
+        #MyAgents.distributionA = self.PF.getBeliefDistribution(MyAgents.particleListA)
+        #MyAgents.distributionB = self.PF.getBeliefDistribution(MyAgents.particleListB)
 
         enemyDistributions = [None, MyAgents.distributionA, None, MyAgents.distributionB]
         target = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
@@ -310,6 +314,9 @@ class ParticleFilter():
     def observe(self, gameState, particleListA, particleListB, distributionA, distributionB):
         #this function takes the two noisyDistances and edits the distributions
         #NOTE: since getDistanceProb returns only 0 or 1/13 this might as well be a boolean operation
+        #RETURN: this returns 4 objects, IN THIS ORDER: [particleListA, distributionA, particleListB, distributionB]
+        #        it returns the distributions so they don't have to be recalculated by chooseAction() because running
+        #        extra getBeliefDistribution is expensive
 
         selfPosition = gameState.getAgentState(self.index).getPosition()
         noisyDistances = gameState.getAgentDistances()
@@ -318,16 +325,13 @@ class ParticleFilter():
         enemyDistributions = [None, distributionA, None, distributionB]
         particleLists = [None, particleListA, None, particleListB]
 
-        returnLists = []
+        returnObjs = []
         for enemy in self.enemyIndices:
             distribution = enemyDistributions[enemy]
             particleList = particleLists[enemy]
             #if the enemy is in sight range
             if (gameState.getAgentPosition(enemy)):
                 distribution = util.Counter()
-                #test to see if we eat the pacman
-                print("selfPosition:", selfPosition)
-                print("getAgentPosition:", gameState.getAgentPosition(enemy))
                 distribution[gameState.getAgentPosition(enemy)] = 1
 
             #if the enemy is not in sight range
@@ -349,8 +353,9 @@ class ParticleFilter():
             while (i < self.numParticles):
                 returnList.append(util.sample(distribution))
                 i += 1
-            returnLists.append(returnList)
-        return returnLists
+            returnObjs.append(returnList)
+            returnObjs.append(distribution)
+        return returnObjs
 
     def elapseTime(self, gameState, particleList):
         #this is going to be somewhat simple since we have no epxlicit knowledge about where
@@ -390,18 +395,3 @@ class ParticleFilter():
                     newParticleList.append(state)
                 i += 1
         return newParticleList
-
-    def setBeliefDistribution(self, distTag):
-        if (distTag == "A"):
-            self.getBeliefDistribution(self.particleListA)
-        else:
-            self.getBeliefDistribution(self.particleListB)
-
-    def getCounterInstance(self, distTag):
-        #NOTE: This should be obsolete now after moving to a shared MyAgents distribution system
-        #this actually returns the counter so the class variables can be used in a not-gross way
-        if (distTag == "A"):
-            return self.distributionA
-        else:
-            return self.distributionB
-
