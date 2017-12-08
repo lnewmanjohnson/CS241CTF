@@ -16,7 +16,6 @@ from captureAgents import CaptureAgent
 import random, time, util
 from game import Directions
 import game
-import os
 
 #################
 # Team creation #
@@ -114,7 +113,6 @@ class TestDefender(MyAgents):
             self.enemyDistributions[0] = MyAgents.distributionA
             self.enemyDistributions[2] = MyAgents.distributionB
 
-
         self.particleLists = [None, None, None, None]
         if (self.team == "red"):
             self.particleLists[1] = MyAgents.particleListA
@@ -130,24 +128,20 @@ class TestDefender(MyAgents):
 
 
     def chooseAction(self, gameState):
-        #aw_input()
-        #clear = lambda: os.system('cls')
-        #clear()
+        #raw_input()
         if (self.index == 1 or self.index == 2):
             #elapseTime for the enemy B agent
             MyAgents.particleListA = self.PF.elapseTime(gameState, MyAgents.particleListA)
         if (self.index == 0 or self.index == 3):
             #elapseTime for the enemy A agent
             MyAgents.particleListB = self.PF.elapseTime(gameState, MyAgents.particleListB)
-        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB, MyAgents.stats)
-        #MyAgents.distributionA = self.PF.getBeliefDistribution(MyAgents.particleListA)
-        #MyAgents.distributionB = self.PF.getBeliefDistribution(MyAgents.particleListB)
 
+        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB, MyAgents.stats)
         enemyDistributions = [None, MyAgents.distributionA, None, MyAgents.distributionB]
         target, prevThreatA, prevThreatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
         MyAgents.stats["prevThreatA"] = prevThreatA
         MyAgents.stats["prevThreatB"] = prevThreatB
-        #print("target: ", target)
+
         if (target == "A"):
             targetDistribution = MyAgents.distributionA
         else:
