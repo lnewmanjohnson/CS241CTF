@@ -54,6 +54,7 @@ class MyAgents(CaptureAgent):
     isInitialized = False
     numParticles = 1000
     stats = {}
+    agents = [0, 0, 0, 0]
 
 
     
@@ -64,6 +65,8 @@ class TestDefender(MyAgents):
         self.PF = ParticleFilter(gameState, self.index, MyAgents.numParticles)
 
         CaptureAgent.registerInitialState(self, gameState)
+
+        self.safety_score = 100
 
         self.start = gameState.getAgentPosition(self.index)  # Start position
 
@@ -142,47 +145,13 @@ class TestDefender(MyAgents):
 
         MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB, MyAgents.stats)
         enemyDistributions = [None, MyAgents.distributionA, None, MyAgents.distributionB]
-        target, prevThreatA, prevThreatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
-        MyAgents.stats["prevThreatA"] = prevThreatA
-        MyAgents.stats["prevThreatB"] = prevThreatB
 
-        if (target == "A"):
-            targetDistribution = MyAgents.distributionA
+        if (gameState.getAgentState(self.index).scaredTimer > 0):
+            print("running flee")
+            return self.flee(gameState)
         else:
-            targetDistribution = MyAgents.distributionB
-        probInBackCourt = 0
-        zoneDistribution = [0, 0 ,0]
-        for state in targetDistribution:
-            # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
-            if (self.team == "red" and state[0] > 17):
-                probInBackCourt += targetDistribution[state]
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 9):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
-            elif (self.team == "blue" and state[0] < 13):               #TODO I just did this for RED, BLUE is outdated
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 8):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
+            return self.pointDefense(gameState)
 
-        #print("probInBackCourt for ", target, " is: ", probInBackCourt)
-        #TODO currently it does not know when enemy is actually in back court its done by a focal point
-        if (probInBackCourt > .5):                                  
-        #the strictness of these inequalities probably does not really matter
-            return self.pointDefense(gameState, probInBackCourt, zoneDistribution)
-        else:
-            return self.chase(gameState, target)
 
 
 
@@ -214,7 +183,8 @@ class TestDefender(MyAgents):
             if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 15): #TODO make '16' this work for blue too
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
-        #print("chose to do: ", bestAction[0])
+
+        #a small method to check if the agent got stuck somehow
         if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
             randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions())-1)]
             self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
@@ -224,14 +194,52 @@ class TestDefender(MyAgents):
         
 
 
-    def pointDefense(self, gameState, probInBackCourt, zoneDistribution):
+    def pointDefense(self, gameState):
         #this function is a switch to tell the defenders how to play point defense
+        probInBackCourt = 0
+        zoneDistribution = [0, 0 ,0]
 
+        target, prevThreatA, prevThreatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
+        MyAgents.stats["prevThreatA"] = prevThreatA
+        MyAgents.stats["prevThreatB"] = prevThreatB
+
+        if (target == "A"):
+            targetDistribution = MyAgents.distributionA
+        else:
+            targetDistribution = MyAgents.distributionB
+
+        for state in targetDistribution:
+            # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
+            if (self.team == "red" and state[0] > 17):                                          
+                probInBackCourt += targetDistribution[state]
+                if (state[1] <= 4):
+                    #tests for Zone A
+                    zoneDistribution[0] += targetDistribution[state]
+                elif (state[1] <= 9):
+                    #tests for Zone B
+                    zoneDistribution[1] += targetDistribution[state]
+                else:
+                    #tests for Zone C
+                    zoneDistribution[2] += targetDistribution[state]
+            elif (self.team == "blue" and state[0] < 13):               #TODO I just did this for RED, BLUE is outdated
+                if (state[1] <= 4):
+                    #tests for Zone A
+                    zoneDistribution[0] += targetDistribution[state]
+                elif (state[1] <= 8):
+                    #tests for Zone B
+                    zoneDistribution[1] += targetDistribution[state]
+                else:
+                    #tests for Zone C
+                    zoneDistribution[2] += targetDistribution[state]
+
+        #print("probInBackCourt for ", target, " is: ", probInBackCourt)
+        if (probInBackCourt > .5):                                  
+        #the strictness of these inequalities probably does not really matter
+            return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
+        else:
+            return self.chase(gameState, target)
         #print("running assumePost with zone: ", zoneDistribution.index(max(zoneDistribution)))
         #print("trying to reach: ", self.defensePoints[zoneDistribution.index(max(zoneDistribution))])
-        return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
-        #TODO flesh out a more nuanced transition function between posts
-
 
     def assumePost(self, gameState, postIndex):
         #this function sends the agent toward either post a, b, or c along the perimeter
@@ -251,6 +259,149 @@ class TestDefender(MyAgents):
             return randomAction
         else:
             return bestAction[0]
+
+    def flee(self, gameState):      #TODO make sure peters code accesses distribution in the way I want
+        #this function works as a switch to inform the agent while its running from the Capsule
+        bestAction = ["Stop", None]
+        if (gameState.getAgentState(self.index).scaredTimer > 10):
+            #if there is still a decent amount of time before I should return to defense
+            bestAction[0] = self.reactiveOffense(gameState)
+        else:
+            #if its time to go back to defense
+            bestAction[0] = self.pointDefense(gameState)
+
+        if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
+            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions())-1)]
+            self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
+            return randomAction
+        else:
+            return bestAction[0]
+
+
+    def reactiveOffense(self, gameState):
+        #this function will instruct the agent on how to play some opportunistic offense
+        #when an enemy has taken the power capsule
+        teammatePos = gameState.getAgentState((self.index + 2) % 4).getPosition()
+        #determine what zone to attack
+        if ((teammatePos[1]) > 6):
+            attackZone = 0
+        else:
+            attackZone = 1
+        return self.search(gameState, attackZone)
+
+
+    def search(self, gameState, zone): #TODO this function seems to get frozen a lot
+        """
+        Offense 1: Aggressively searches for food, avoiding ghosts
+        """
+        def evaluate(self, gameState, action, zone):
+            #zone parameter is optional, if set to anything other than 1 or 2 will revert to previous functionality
+            score = 0.0
+            successor = self.getSuccessor(gameState, action)
+            newPos = successor.getAgentState(self.index).configuration.pos
+            if (successor.getAgentState(self.index).numCarrying > gameState.getAgentState(self.index).numCarrying):
+                score += 50
+
+                #setting zone so that an opportunistic offender will only go to one half of the map
+            if (zone == 0):
+                foodList = self.getFood(successor).asList()
+                for food in foodList:
+                    if (food[1] > 8):
+                        foodList.remove(food)
+            elif (zone == 1):
+                foodList = self.getFood(successor).asList()
+                for food in foodList:
+                    if (food[1] <= 7):
+                        foodList.remove(food)
+            else:
+                foodList = self.getFood(successor).asList()
+
+            for food in foodList:
+                score += 10.0 / self.getMazeDistance(newPos, food)
+
+            for index in self.getOpponents(gameState):
+                ghost = successor.getAgentState(index)
+                opp_pos = successor.getAgentPosition(index)
+                if (ghost.scaredTimer > 6 and opp_pos is not None):
+                    print(ghost.scaredTimer)
+                    score += 100/self.getMazeDistance(newPos, opp_pos)
+
+            score -= len(self.getFood(successor).asList())/10
+            score -= self.get_safety_score(successor)
+            return score
+
+        self.update_safety_score(gameState)
+        if(self.safety_score < 50):
+            MyAgents.agents[self.index] = 1
+            return self.deliver_food(gameState)
+
+        carrying = gameState.getAgentState(self.index).numCarrying
+        if (carrying > 6 or self.safety_score < 50):
+            return self.deliver_food(gameState)
+        # elif(other_checks): return other)subroutine2(gameState)
+        else:
+            actions = gameState.getLegalActions(self.index)
+            best_action = actions[0]
+            best_score = -9999
+
+            for action in actions:
+                score = evaluate(self, gameState, action, zone)
+                if (score > best_score):
+                    best_score = score
+                    best_action = action
+
+        return best_action
+
+    def deliver_food(self, gameState):
+        """
+        Offense 2: Return food to safety
+        """
+
+        def evaluate(self, gameState, action):
+            score = 0.0
+            successor = self.getSuccessor(gameState, action)
+            newPos = successor.getAgentState(self.index).configuration.pos
+            if(newPos[0] > 16):
+                return 10
+            safety_spots = [(17, i) for i in [1, 3, 4, 6, 7, 8, 10, 14]]
+            for pos in safety_spots:
+                score += 10.0 / (self.getMazeDistance(newPos, pos) ** 2)
+            score -= self.get_safety_score(successor)/10
+            return score
+
+        self.update_safety_score(gameState)
+        carrying = gameState.getAgentState(self.index).numCarrying
+        if (carrying < 6 and self.safety_score > 60):
+            MyAgents.agents[self.index] = 0
+            return self.search(gameState)
+        else:
+            actions = gameState.getLegalActions(self.index)
+            best_action = actions[0]
+            best_score = -9999
+            for action in actions:
+                score = evaluate(self, gameState, action)
+                if (score > best_score):
+                    best_score = score
+                    best_action = action
+            return best_action
+
+    def update_safety_score(self, gameState):
+        self.safety_score = self.get_safety_score(gameState)
+
+    def get_safety_score(self, gameState):
+        my_pos = gameState.getAgentPosition(self.index)
+        safety_score = 100
+        if(my_pos[0] > 16 and gameState.getAgentState(self.index).scaredTimer == 0):
+            return safety_score
+        else:
+            opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
+            for opp in opps_index:
+                opp_state = gameState.getAgentState(opp)
+                opp_timer = opp_state.scaredTimer
+                opp_pos = gameState.getAgentPosition(opp)
+                if opp_pos is not None and (opp_pos[0]-16) < (16 - my_pos[0]):
+                    safety_score -= 10 * self.getMazeDistance(my_pos, opp_pos)
+            return safety_score
 
 
     def getSuccessor(self, gameState, action):
