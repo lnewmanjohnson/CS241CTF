@@ -162,7 +162,7 @@ class TestDefender(MyAgents):
         bestAction = ["Stop", self.distancer.getDistance(myPos, targetPos)]
         for action in gameState.getLegalActions(self.index):
             successor = self.getSuccessor(gameState, action)
-            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0] in range(defenderLimitZone[0], defenderLimitZone[1])):
+            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0]):
                 #the defender is about to eat the enemy
                 if (target == "A"):
                     MyAgents.distributionA, MyAgents.particleListA = self.PF.eat(target)
