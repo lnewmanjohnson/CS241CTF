@@ -94,26 +94,6 @@ class TestDefender(MyAgents):
             MyAgents.particleListB.append(enemyStartB)
             i += 1      
 
-
-        """
-            #set defensePoint to play defense later
-        if (self.team == "red"):
-            self.defensePoints = [(13, 4), (12, 6), (12, 10)] #TODO verify that these are optimal positions
-        else:
-            self.defensePoints = [(19, 3), (19, 6), (18, 11)] 
-
-            #creating the first particleLists
-        if (self.index in gameState.getRedTeamIndices()):
-            enemyStartA = (30, 13)
-            enemyStartB = (30, 14)
-        else:
-            enemyStartA = (1, 2)
-            enemyStartB = (1, 1)
-            #these have been verified
-        """
-
-
-
             #create the enemyDistributions array to make index to distribution conversion easier
         self.enemyDistributions = [None, None, None, None]
         if (self.team == "red"):
@@ -231,7 +211,6 @@ class TestDefender(MyAgents):
             if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] in range(defenderLimitZone[0], defenderLimitZone[1])):
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
-        #print("chose to do: ", bestAction[0])
         print("target:", target)
         if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
             randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions(self.index))-1)]
@@ -299,11 +278,9 @@ class TestDefender(MyAgents):
         threatA = 0
         for state in distributionA:
             threatA += (direction)*(1.0/(state[0] - backLine))*distributionA[state]
-        #print("threatA: ", threatA)
         threatB = 0
         for state in distributionB:
             threatB += (direction)*(1.0/(state[0] - backLine))*distributionB[state]
-        #print("threatB: ", threatB)
         if (threatA >= threatB):
             return "A", threatA, threatB
         else:
@@ -314,11 +291,9 @@ class TestDefender(MyAgents):
         # if the agent is stuck (same move more than 5 times)
         #prevStats is of the form: [action, position, timeSpentInPosition]
 
-        #print("action:", action)
         if (action == self.prevStats[0] and successor == self.prevStats[1]):
             self.prevStats[2] += 1
             if (self.prevStats[2] >= 5):
-                #print("timeSpentInPosition: ", self.prevStats[2])
                 return True
         else:
             self.prevStats[0] = action
@@ -397,8 +372,6 @@ class ParticleFilter():
         prevThreats[self.enemyIndices[1]] = stats["prevThreatB"]
 
 
-        #print("going in dists:", enemyDistributions)
-
         returnObjs = []
         for enemy in self.enemyIndices:
             distribution = enemyDistributions[enemy]
@@ -426,7 +399,6 @@ class ParticleFilter():
                     distribution.normalize()
 
             #resample for next time
-            #print("returning:", distribution)
             returnList = []
             i = 0
             while (i < self.numParticles):
