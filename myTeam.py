@@ -218,7 +218,7 @@ class TestDefender(MyAgents):
             else:
                 #tests for Zone C
                 zoneDistribution[2] += targetDistribution[state]
-                
+
         if (probInBackCourt > .5):                                  
         #the strictness of these inequalities probably does not really matter
             return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
@@ -226,7 +226,7 @@ class TestDefender(MyAgents):
             return self.chase(gameState, target)
 
 
-    def assumePost(self, gameState, postIndex):s
+    def assumePost(self, gameState, postIndex):
         #this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
