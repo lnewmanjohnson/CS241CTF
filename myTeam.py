@@ -136,45 +136,9 @@ class TestDefender(MyAgents):
         MyAgents.stats["prevThreatA"] = threatA
         MyAgents.stats["prevThreatB"] = threatB
 
-        if (target == "A"):
-            targetDistribution = MyAgents.distributionA
-        else:
-            targetDistribution = MyAgents.distributionB
-        probInBackCourt = 0
-        zoneDistribution = [0, 0 ,0]
-        for state in targetDistribution:
-            # the numbers in the conditionals, 17 and 14, may need to be changed in the future to tune
-            if (self.team == "red" and state[0] > 17):                      #TODO ADD CHECK TO ONLY CALCULATE FOR STATES THAT ARE A THEAT
-                probInBackCourt += targetDistribution[state]
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 9):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
-            elif (self.team == "blue" and state[0] < 14):            
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 9):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
 
-
-        #print("probInBackCourt for ", target, " is: ", probInBackCourt)
-        #TODO currently it does not know when enemy is actually in back court its done by a focal point
-        if (probInBackCourt > .5):                                  
-        #the strictness of these inequalities probably does not really matter
-            return self.pointDefense(gameState, probInBackCourt, zoneDistribution)
-        else:
-            return self.chase(gameState, target)
-
+        # TODO THE FUTURE SITE OF THE SCAREDTIMER SWITCH
+        return self.pointDefense(gameState)
 
 
     def chase(self, gameState, target):
@@ -221,13 +185,49 @@ class TestDefender(MyAgents):
         
 
 
-    def pointDefense(self, gameState, probInBackCourt, zoneDistribution):
-        #this function is a switch to tell the defenders how to play point defense
+    def pointDefense(self, gameState):
+       #this function is a switch to tell the defenders how to play point defense
+        probInBackCourt = 0
+        zoneDistribution = [0, 0 ,0]
 
-        #print("running assumePost with zone: ", zoneDistribution.index(max(zoneDistribution)))
-        #print("trying to reach: ", self.defensePoints[zoneDistribution.index(max(zoneDistribution))])
-        return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
-        #TODO flesh out a more nuanced transition function between posts
+        target, prevThreatA, prevThreatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
+        MyAgents.stats["prevThreatA"] = prevThreatA
+        MyAgents.stats["prevThreatB"] = prevThreatB
+
+        if (target == "A"):
+            targetDistribution = MyAgents.distributionA
+        else:
+            targetDistribution = MyAgents.distributionB
+
+        for state in targetDistribution:
+            # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
+            if (self.team == "red" and state[0] > 17):                                          
+                probInBackCourt += targetDistribution[state]
+                if (state[1] <= 4):
+                    #tests for Zone A
+                    zoneDistribution[0] += targetDistribution[state]
+                elif (state[1] <= 9):
+                    #tests for Zone B
+                    zoneDistribution[1] += targetDistribution[state]
+                else:
+                    #tests for Zone C
+                    zoneDistribution[2] += targetDistribution[state]
+            elif (self.team == "blue" and state[0] < 13):               #TODO I just did this for RED, BLUE is outdated
+                if (state[1] <= 4):
+                    #tests for Zone A
+                    zoneDistribution[0] += targetDistribution[state]
+                elif (state[1] <= 8):
+                    #tests for Zone B
+                    zoneDistribution[1] += targetDistribution[state]
+                else:
+                    #tests for Zone C
+                    zoneDistribution[2] += targetDistribution[state]
+
+        if (probInBackCourt > .5):                                  
+        #the strictness of these inequalities probably does not really matter
+            return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
+        else:
+            return self.chase(gameState, target)
 
 
     def assumePost(self, gameState, postIndex):
