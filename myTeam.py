@@ -77,20 +77,30 @@ class TestDefender(MyAgents):
             #set team name
         if (self.index in gameState.getRedTeamIndices()):
             self.team = "red"
+            self.enemyIndices = gameState.getBlueTeamIndices()
+            self.defensePoints = [(13, 4), (12, 6), (12, 10)]
+            enemyStartA = (30, 13)
+            enemyStartB = (30, 14)
         else:
             self.team = "blue"
+            self.enemyIndices = gameState.getRedTeamIndices()
+            self.defensePoints = [(19, 3), (19, 6), (18, 11)]
+            enemyStartA = (1, 2)
+            enemyStartB = (1, 1)
+        print("self.enemyIndices", self.enemyIndices)
+        i = 1
+        while (i <= self.numParticles):
+            MyAgents.particleListA.append(enemyStartA)
+            MyAgents.particleListB.append(enemyStartB)
+            i += 1      
 
+
+        """
             #set defensePoint to play defense later
         if (self.team == "red"):
-            self.defensePoints = [(13, 4), (13, 7), (12, 11)] #TODO verify that these are optimal positions
+            self.defensePoints = [(13, 4), (12, 6), (12, 10)] #TODO verify that these are optimal positions
         else:
-            self.defensePoints = [(19, 3), (18, 6), (18, 10)] 
-
-            #create a list of form [a, b] containing the enemy indices
-        self.enemyIndices = gameState.getRedTeamIndices()
-        if (self.index in gameState.getRedTeamIndices()):
-            self.enemyIndices = gameState.getBlueTeamIndices()
-
+            self.defensePoints = [(19, 3), (19, 6), (18, 11)] 
 
             #creating the first particleLists
         if (self.index in gameState.getRedTeamIndices()):
@@ -100,12 +110,9 @@ class TestDefender(MyAgents):
             enemyStartA = (1, 2)
             enemyStartB = (1, 1)
             #these have been verified
+        """
 
-        i = 1
-        while (i <= self.numParticles):
-            MyAgents.particleListA.append(enemyStartA)
-            MyAgents.particleListB.append(enemyStartB)
-            i += 1
+
 
             #create the enemyDistributions array to make index to distribution conversion easier
         self.enemyDistributions = [None, None, None, None]
@@ -130,7 +137,6 @@ class TestDefender(MyAgents):
 
 
 
-
     def chooseAction(self, gameState):
         #raw_input()
         if (self.index == 1 or self.index == 2):
@@ -140,11 +146,15 @@ class TestDefender(MyAgents):
             #elapseTime for the enemy A agent
             MyAgents.particleListB = self.PF.elapseTime(gameState, MyAgents.particleListB)
 
-        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.distributionA, MyAgents.distributionB, MyAgents.stats)
-        enemyDistributions = [None, MyAgents.distributionA, None, MyAgents.distributionB]
-        target, prevThreatA, prevThreatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
-        MyAgents.stats["prevThreatA"] = prevThreatA
-        MyAgents.stats["prevThreatB"] = prevThreatB
+        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB,  MyAgents.distributionB = self.PF.observe(gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.stats)
+
+        enemyDistributions = [None, None, None, None]
+        enemyDistributions[self.enemyIndices[0]] = MyAgents.distributionA
+        enemyDistributions[self.enemyIndices[1]] = MyAgents.distributionB
+
+        target, threatA, threatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
+        MyAgents.stats["prevThreatA"] = threatA
+        MyAgents.stats["prevThreatB"] = threatB
 
         if (target == "A"):
             targetDistribution = MyAgents.distributionA
@@ -153,8 +163,8 @@ class TestDefender(MyAgents):
         probInBackCourt = 0
         zoneDistribution = [0, 0 ,0]
         for state in targetDistribution:
-            # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
-            if (self.team == "red" and state[0] > 17):
+            # the numbers in the conditionals, 17 and 14, may need to be changed in the future to tune
+            if (self.team == "red" and state[0] > 17):                      #TODO ADD CHECK TO ONLY CALCULATE FOR STATES THAT ARE A THEAT
                 probInBackCourt += targetDistribution[state]
                 if (state[1] <= 4):
                     #tests for Zone A
@@ -165,16 +175,17 @@ class TestDefender(MyAgents):
                 else:
                     #tests for Zone C
                     zoneDistribution[2] += targetDistribution[state]
-            elif (self.team == "blue" and state[0] < 13):               #TODO I just did this for RED, BLUE is outdated
+            elif (self.team == "blue" and state[0] < 14):            
                 if (state[1] <= 4):
                     #tests for Zone A
                     zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 8):
+                elif (state[1] <= 9):
                     #tests for Zone B
                     zoneDistribution[1] += targetDistribution[state]
                 else:
                     #tests for Zone C
                     zoneDistribution[2] += targetDistribution[state]
+
 
         #print("probInBackCourt for ", target, " is: ", probInBackCourt)
         #TODO currently it does not know when enemy is actually in back court its done by a focal point
@@ -199,11 +210,17 @@ class TestDefender(MyAgents):
         #print("currently at: ", gameState.getAgentPosition(self.index))
         #print("trying to reach: ", targetPos)
         #print("PROTOCOL: chasing target ", target, " at pos: ", targetPos)
+
+        #sets the limitLine which is the X value the defender will NEVER go to to chase
+        if (self.team == "red"):
+            defenderLimitZone = (0,15)
+        else:
+            defenderLimitZone =(17,31)
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, targetPos)]
         for action in gameState.getLegalActions(self.index):
             successor = self.getSuccessor(gameState, action)
-            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0] < 15):
+            if (successor.getAgentState(self.index).configuration.pos == targetPos and successor.getAgentState(self.index).configuration.pos[0] in range(defenderLimitZone[0], defenderLimitZone[1])):
                 #the defender is about to eat the enemy
                 if (target == "A"):
                     MyAgents.distributionA, MyAgents.particleListA = self.PF.eat(target)
@@ -211,12 +228,13 @@ class TestDefender(MyAgents):
                     MyAgents.distributionB, MyAgents.particleListB = self.PF.eat(target)
                 return action
 
-            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 15): #TODO make '16' this work for blue too
+            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] in range(defenderLimitZone[0], defenderLimitZone[1])):
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
         #print("chose to do: ", bestAction[0])
+        print("target:", target)
         if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
-            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions())-1)]
+            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions(self.index))-1)]
             self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
             return randomAction
         else:
@@ -269,13 +287,22 @@ class TestDefender(MyAgents):
     def determineTarget(self, gameState, distributionA, distributionB):
         #this function returns the index of the enemy most likely playing offense
 
+        #sets variables so the function can go in both directions
+        if (self.team == "red"):
+            backLine = 0
+            direction = (1)
+        else:
+            backLine = 31
+            direction = (-1)
+
+
         threatA = 0
         for state in distributionA:
-            threatA += (1.0/(state[0]))*distributionA[state]
+            threatA += (direction)*(1.0/(state[0] - backLine))*distributionA[state]
         #print("threatA: ", threatA)
         threatB = 0
         for state in distributionB:
-            threatB += (1.0/(state[0]))*distributionB[state]
+            threatB += (direction)*(1.0/(state[0] - backLine))*distributionB[state]
         #print("threatB: ", threatB)
         if (threatA >= threatB):
             return "A", threatA, threatB
@@ -344,20 +371,33 @@ class ParticleFilter():
             self.enemyStartA = (1, 2)
             self.enemyStartB = (1, 1)
 
-    def observe(self, gameState, particleListA, particleListB, distributionA, distributionB, stats):
+    def observe(self, gameState, particleListA, particleListB, stats):
         #this function takes the two noisyDistances and edits the distributions
         #NOTE: since getDistanceProb returns only 0 or 1/13 this might as well be a boolean operation
         #RETURN: this returns 4 objects, IN THIS ORDER: [particleListA, distributionA, particleListB, distributionB]
-        #        it returns the distributions so they don't have to be recalculated by chooseAction() because running
+        #        it returns the distributions so they don't have to be recalculated by chooseAction(); running
         #        extra getBeliefDistribution is expensive
+        #NOTE: this doesn't actually take distributionA, distributionB right now. everything runs out of the list may need to change later
 
         selfPosition = gameState.getAgentState(self.index).getPosition()
         noisyDistances = gameState.getAgentDistances()
-        distributionA = self.getBeliefDistribution(particleListA)
+        distributionA = self.getBeliefDistribution(particleListA)          
         distributionB = self.getBeliefDistribution(particleListB)
-        enemyDistributions = [None, distributionA, None, distributionB]
-        particleLists = [None, particleListA, None, particleListB]
-        prevThreats = [None, stats["prevThreatA"], None, stats["prevThreatB"]]
+
+        enemyDistributions = [None,None,None,None]
+        enemyDistributions[self.enemyIndices[0]] = distributionA
+        enemyDistributions[self.enemyIndices[1]] = distributionB
+
+        particleLists = [None,None,None,None]
+        particleLists[self.enemyIndices[0]] = particleListA
+        particleLists[self.enemyIndices[1]] = particleListB
+
+        prevThreats = [None,None,None,None]
+        prevThreats[self.enemyIndices[0]] = stats["prevThreatA"]
+        prevThreats[self.enemyIndices[1]] = stats["prevThreatB"]
+
+
+        #print("going in dists:", enemyDistributions)
 
         returnObjs = []
         for enemy in self.enemyIndices:
@@ -380,19 +420,13 @@ class ParticleFilter():
                     #print("DISTRIBUTION FOR:", enemy, "JUST BOTTOMED OUT. #:", self.numInitializedUniformly)
                     particleList = self.initializeUniformly(particleList)
                     distribution = self.getBeliefDistribution(particleList)
+                    distribution = self.antiBimodalCleaning(distribution, enemy, selfPosition)
                     for state in distribution:
-                        if(prevThreats[enemy] < .25 and state[0] < selfPosition[0]):
-                            #print("badState: ", state, " was pre-removed")
-                            distribution[state] = 0
-                        elif(prevThreats[enemy] > .50 and state[0] > selfPosition[0]):
-                            print("THE BACKWARDS ANTI-BIMODAL WAS CALLED")
-                            distribution[state] = 0
-                        else:
-                            distribution[state] = distribution[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemy])
+                        distribution[state] = distribution[state]*gameState.getDistanceProb(util.manhattanDistance(selfPosition, state), noisyDistances[enemy])
                     distribution.normalize()
-                    #print("After: ", distribution)
 
             #resample for next time
+            #print("returning:", distribution)
             returnList = []
             i = 0
             while (i < self.numParticles):
@@ -400,12 +434,34 @@ class ParticleFilter():
                 i += 1
             returnObjs.append(returnList)
             returnObjs.append(distribution)
+
+
         return returnObjs
 
+    def antiBimodalCleaning(self, origDistribution, enemy, selfPosition):
+        #cleans up post-initializeUniformly distributions removings that are impossible due to knowledge of the
+        #previous turn's threat analysis
+
+        if (self.team == "red"):
+            direction = 1
+        else:
+            direction = 0
+
+        prevThreats = [None,None,None,None]
+        prevThreats[self.enemyIndices[0]] = MyAgents.stats["prevThreatA"]
+        prevThreats[self.enemyIndices[1]] = MyAgents.stats["prevThreatB"]
+        distribution = origDistribution.copy()
+        for state in distribution:
+            if(prevThreats[enemy] < .25 and (state[0] - selfPosition[0])*direction > 0):
+                distribution[state] = 0
+            elif(prevThreats[enemy] > .50 and (state[0] - selfPosition[0])*direction > 0):
+                distribution[state] = 0
+        distribution.normalize()
+        return distribution
+
     def elapseTime(self, gameState, particleList):
-        #this is going to be somewhat simple since we have no epxlicit knowledge about where
-        #the enemy ghosts like to go. it will still be necessary to do but it may be made
-        #more useful in the future
+        #this function moves particles along in time picking evenly from all possible moves from that particle's state
+
         returnList = []
         i = 0
         while (i < len(particleList)):
