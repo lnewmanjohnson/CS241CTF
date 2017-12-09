@@ -180,7 +180,7 @@ class TestDefender(MyAgents):
                     MyAgents.distributionB, MyAgents.particleListB = self.PF.eat(target)
                 return action
 
-            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 15): #TODO make '16' this work for blue too
+            if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] < 15): #TODO make '15' this work for blue too
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
 
@@ -260,7 +260,7 @@ class TestDefender(MyAgents):
         else:
             return bestAction[0]
 
-    def flee(self, gameState):      #TODO make sure peters code accesses distribution in the way I want
+    def flee(self, gameState):
         #this function works as a switch to inform the agent while its running from the Capsule
         bestAction = ["Stop", None]
         if (gameState.getAgentState(self.index).scaredTimer > 10):
