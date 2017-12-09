@@ -87,7 +87,6 @@ class TestDefender(MyAgents):
             self.defensePoints = [(19, 3), (19, 6), (18, 11)]
             enemyStartA = (1, 2)
             enemyStartB = (1, 1)
-        print("self.enemyIndices", self.enemyIndices)
         i = 1
         while (i <= self.numParticles):
             MyAgents.particleListA.append(enemyStartA)
@@ -144,7 +143,6 @@ class TestDefender(MyAgents):
     def chase(self, gameState, target):
         #this function just tries to run to the square where the ghost most likely is
 
-        print("chasing")
         if (target == "A"):
             targetPos = MyAgents.distributionA.argMax()
         else:
@@ -257,7 +255,6 @@ class TestDefender(MyAgents):
 
 
     def assumePost(self, gameState, postIndex):
-        print("assumingPost toward: ", postIndex)
         #this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
