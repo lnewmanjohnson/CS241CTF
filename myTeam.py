@@ -23,7 +23,7 @@ import game
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='TestAgent', second='TestAgent'):
+               first='OffensiveReflexAgent', second='OffensiveReflexAgent'):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -47,167 +47,46 @@ def createTeam(firstIndex, secondIndex, isRed,
 # Agents #
 ##########
 
-class TestAgent(CaptureAgent):
-    """
-    A Dummy agent to serve as an example of the necessary agent structure.
-    You should look at baselineTeam.py for more details about how to
-    create an agent as this is the bare minimum.
-    """
 
-    beliefs = util.Counter()  # Keep track of beliefs about location of opponents (tuple of 2 positions with prob)
+class ReflexCaptureAgent(CaptureAgent):
+    """
+    A base class for reflex agents that chooses score-maximizing actions
+    """
     agents = [0, 0, 0, 0]
 
     def registerInitialState(self, gameState):
-        """
-        This method handles the initial setup of the
-        agent to populate useful fields (such as what team
-        we're on).
-
-        A distanceCalculator instance caches the maze distances
-        between each pair of positions, so your agents can use:
-        self.distancer.getDistance(p1, p2)
-
-        IMPORTANT: This method may run for at most 15 seconds.
-        """
-
-        '''
-        Make sure you do not delete the following line. If you would like to
-        use Manhattan distances instead of maze distances in order to save
-        on initialization time, please take a look at
-        CaptureAgent.registerInitialState in captureAgents.py.
-        '''
+        self.start = gameState.getAgentPosition(self.index)
         CaptureAgent.registerInitialState(self, gameState)
-
-        '''
-        Your initialization code goes here, if you need any.
-        '''
-
-        # Init beliefs with starting positions of opponents
-        belief = [(0, 0), (0, 0)]
-        for i in range(2):
-            o = self.getOpponents(gameState)
-            belief[i] = gameState.getAgentPosition(o[i])
-        TestAgent.beliefs[tuple(belief)] = 1.0
-
-        self.start = gameState.getAgentPosition(self.index)  # Start position
-        self.safety_score = 100
 
     def chooseAction(self, gameState):
         """
-        Picks among actions randomly.
+        Picks among the actions with the highest Q(s,a).
         """
+        time.sleep(0.02)
+        actions = gameState.getLegalActions(self.index)
 
-        #teammate_index = (self.index + 2) % 4
-        #teammate = gameState.getAgentState(teammate_index)
+        # You can profile your evaluation time by uncommenting these lines
+        # start = time.time()
+        values = [self.evaluate(gameState, a) for a in actions]
+        # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
-        # TODO: Update beliefs based on new observations and possible moves
+        maxValue = max(values)
+        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
 
-        time.sleep(0.2)
+        foodLeft = len(self.getFood(gameState).asList())
 
-        if TestAgent.agents[self.index] == 0:
-            print("Agent %d: Searching" % self.index)
-            return self.search(gameState)
-        elif TestAgent.agents[self.index] == 1:
-            print("Agent %d: Delivering" % self.index)
-            return self.deliver_food(gameState)
-
-    def update_safety_score(self, gameState):
-        self.safety_score = self.get_safety_score(gameState)
-
-    def get_safety_score(self, gameState):
-        my_pos = gameState.getAgentPosition(self.index)
-        safety_score = 100
-        if(my_pos[0] > 16 and gameState.getAgentState(self.index).scaredTimer == 0):
-            return safety_score
-        else:
-            opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
-            for opp in opps_index:
-                opp_state = gameState.getAgentState(opp)
-                opp_timer = opp_state.scaredTimer
-                opp_pos = gameState.getAgentPosition(opp)
-                if opp_pos is not None and (opp_pos[0]-16) < (16 - my_pos[0]):
-                    safety_score -= 10 * self.getMazeDistance(my_pos, opp_pos)
-            return safety_score
-
-    def search(self, gameState):
-        """
-        Offense 1: Aggressively searches for food, avoiding ghosts
-        """
-        def evaluate(self, gameState, action):
-            score = 0.0
-            successor = self.getSuccessor(gameState, action)
-            newPos = successor.getAgentState(self.index).configuration.pos
-            if (successor.getAgentState(self.index).numCarrying > gameState.getAgentState(self.index).numCarrying):
-                score += 50
-
-            for food in self.getFood(successor).asList():
-                score += 10.0 / self.getMazeDistance(newPos, food)
-
-            for index in self.getOpponents(gameState):
-                ghost = successor.getAgentState(index)
-                opp_pos = successor.getAgentPosition(index)
-                if (ghost.scaredTimer > 6 and opp_pos is not None):
-                    print(ghost.scaredTimer)
-                    score += 100/self.getMazeDistance(newPos, opp_pos)
-
-            score -= len(self.getFood(successor).asList())/10
-            score -= self.get_safety_score(successor)
-            return score
-
-        self.update_safety_score(gameState)
-        if(self.safety_score < 50):
-            TestAgent.agents[self.index] = 1
-            return self.deliver_food(gameState)
-
-        carrying = gameState.getAgentState(self.index).numCarrying
-        if (carrying > 6 or self.safety_score < 50):
-            return self.deliver_food(gameState)
-        # elif(other_checks): return other)subroutine2(gameState)
-        else:
-            actions = gameState.getLegalActions(self.index)
-            best_action = actions[0]
-            best_score = -9999
-
+        if foodLeft <= 2:
+            bestDist = 9999
             for action in actions:
-                score = evaluate(self, gameState, action)
-                if (score > best_score):
-                    best_score = score
-                    best_action = action
+                successor = self.getSuccessor(gameState, action)
+                pos2 = successor.getAgentPosition(self.index)
+                dist = self.getMazeDistance(self.start, pos2)
+                if dist < bestDist:
+                    bestAction = action
+                    bestDist = dist
+            return bestAction
 
-        return best_action
-
-    def deliver_food(self, gameState):
-        """
-        Offense 2: Return food to safety
-        """
-
-        def evaluate(self, gameState, action):
-            score = 0.0
-            successor = self.getSuccessor(gameState, action)
-            newPos = successor.getAgentState(self.index).configuration.pos
-            if(newPos[0] > 16):
-                return 10
-            safety_spots = [(17, i) for i in [1, 3, 4, 6, 7, 8, 10, 14]]
-            for pos in safety_spots:
-                score += 10.0 / (self.getMazeDistance(newPos, pos) ** 2)
-            score -= self.get_safety_score(successor)/10
-            return score
-
-        self.update_safety_score(gameState)
-        carrying = gameState.getAgentState(self.index).numCarrying
-        if (carrying < 6 and self.safety_score > 60):
-            TestAgent.agents[self.index] = 0
-            return self.search(gameState)
-        else:
-            actions = gameState.getLegalActions(self.index)
-            best_action = actions[0]
-            best_score = -9999
-            for action in actions:
-                score = evaluate(self, gameState, action)
-                if (score > best_score):
-                    best_score = score
-                    best_action = action
-            return best_action
+        return random.choice(bestActions)
 
     def getSuccessor(self, gameState, action):
         """
@@ -220,3 +99,101 @@ class TestAgent(CaptureAgent):
             return successor.generateSuccessor(self.index, action)
         else:
             return successor
+
+    def evaluate(self, gameState, action):
+        """
+        Computes a linear combination of features and feature weights
+        """
+        features = self.getFeatures(gameState, action)
+        weights = self.getWeights(gameState, action)
+        print("Value: " + str(features * weights))
+        return features * weights
+
+    def getFeatures(self, gameState, action):
+        """
+        Returns a counter of features for the state
+        """
+        features = util.Counter()
+        successor = self.getSuccessor(gameState, action)
+        features['successorScore'] = self.getScore(successor)
+        return features
+
+    def getWeights(self, gameState, action):
+        """
+        Normally, weights do not depend on the gamestate.  They can be either
+        a counter or a dictionary.
+        """
+        return {'successorScore': 1.0}
+
+
+class OffensiveReflexAgent(ReflexCaptureAgent):
+    """
+    A reflex agent that seeks food. This is an agent
+    we give you to get an idea of what an offensive agent might look like,
+    but it is by no means the best or only way to build an offensive agent.
+    """
+    agents = [0, 0, 0, 0]
+
+    def getSafetyScore(self, gameState):
+        myPos = gameState.getAgentPosition(self.index)
+        myState = gameState.getAgentState(self.index)
+        safety_score = 100
+        vulnerable = True
+        if (myPos[0] > 15 and myState.scaredTimer == 0):
+            vulnerable = False
+        if vulnerable:
+            opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
+            for opp in opps_index:
+                opp_state = gameState.getAgentState(opp)
+                opp_timer = opp_state.scaredTimer
+                opp_pos = gameState.getAgentPosition(opp)
+                if opp_pos is not None and not (
+                        opp_state.isPacman and myState.scaredTimer > 0): #and (opp_pos[0] - 16) < (16 - myPos[0]):
+                    distance = self.getMazeDistance(myPos, opp_pos)
+                    if distance > opp_timer and distance <= 6:
+                        safety_score -= 150 / distance
+
+        print(safety_score)
+        return safety_score
+
+    def getFeatures(self, gameState, action):
+        features = util.Counter()
+        successor = self.getSuccessor(gameState, action)
+        myState = successor.getAgentState(self.index)
+        myPos = successor.getAgentPosition(self.index)
+        foodList = self.getFood(successor).asList()
+        safetyScore = self.getSafetyScore(successor)
+        if safetyScore > 50 and len(foodList) > 2:
+            features['successorScore'] = -len(foodList) + safetyScore
+            opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
+            for opp in opps_index:
+                opp_state = successor.getAgentState(opp)
+                opp_timer = opp_state.scaredTimer
+                opp_pos = successor.getAgentPosition(opp)
+                if opp_pos is not None:
+                    distance = self.getMazeDistance(myPos, opp_pos)
+                    if distance <= 6 and (opp_state.isPacman or opp_timer > distance):
+                        features['successorScore'] += 10/distance
+                    if opp_pos == (1, 2) or (opp_timer == 0 and gameState.getAgentState(opp).scaredTimer > 1):
+                        features['successorScore'] += 10000
+        else:
+            myPos = successor.getAgentPosition(self.index)
+            score = 0.0
+            safety_spots = [(17, i) for i in [1, 3, 4, 6, 7, 8, 10, 14]]
+            for pos in safety_spots:
+                if self.getMazeDistance(myPos, pos) == 0:
+                    score += 10
+                else:
+                    score += 10.0 / self.getMazeDistance(myPos, pos)
+            features['successorScore'] = score + safetyScore
+
+        # Compute distance to the nearest food
+
+        if len(foodList) > 0:  # This should always be True,  but better safe than sorry
+            myPos = successor.getAgentState(self.index).getPosition()
+            minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
+            features['distanceToFood'] = minDistance
+        return features
+
+    def getWeights(self, gameState, action):
+        return {'successorScore': 100, 'distanceToFood': -1}
