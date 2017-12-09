@@ -144,7 +144,7 @@ class TestDefender(MyAgents):
     def chase(self, gameState, target):
         #this function just tries to run to the square where the ghost most likely is
 
-
+        print("chasing")
         if (target == "A"):
             targetPos = MyAgents.distributionA.argMax()
         else:
@@ -186,7 +186,15 @@ class TestDefender(MyAgents):
 
 
     def pointDefense(self, gameState):
-       #this function is a switch to tell the defenders how to play point defense
+        #this function is a switch to tell the defenders how to play point defense
+        if (self.team == "red"):
+            defenseLine = 17
+            direction = 1
+        else:
+            defenseLine = 13
+            direction = (-1)
+
+
         probInBackCourt = 0
         zoneDistribution = [0, 0 ,0]
 
@@ -199,6 +207,21 @@ class TestDefender(MyAgents):
         else:
             targetDistribution = MyAgents.distributionB
 
+        for state in targetDistribution:
+            if ((state[0] - defenseLine)*direction > 0):
+                #tests if they are beyond the 
+                probInBackCourt += targetDistribution[state]
+            if (state[1] <= 4):
+                #test for Zone A
+                zoneDistribution[0] += targetDistribution[state]
+            elif (state[1] <= 9):
+                #tests for Zone B
+                zoneDistribution[1] += targetDistribution[state]
+            else:
+                #tests for Zone C
+                zoneDistribution[2] += targetDistribution[state]
+
+        """
         for state in targetDistribution:
             # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
             if (self.team == "red" and state[0] > 17):                                          
@@ -216,13 +239,16 @@ class TestDefender(MyAgents):
                 if (state[1] <= 4):
                     #tests for Zone A
                     zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 8):
+                elif (state[1] <= 9):
                     #tests for Zone B
                     zoneDistribution[1] += targetDistribution[state]
                 else:
                     #tests for Zone C
                     zoneDistribution[2] += targetDistribution[state]
+        """
 
+        #print("probInBackCourt:", probInBackCourt)
+        #print("zoneDistribution:", zoneDistribution)
         if (probInBackCourt > .5):                                  
         #the strictness of these inequalities probably does not really matter
             return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
@@ -231,6 +257,7 @@ class TestDefender(MyAgents):
 
 
     def assumePost(self, gameState, postIndex):
+        print("assumingPost toward: ", postIndex)
         #this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
@@ -243,7 +270,7 @@ class TestDefender(MyAgents):
 
         #a small method to check if the agent got stuck somehow
         if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
-            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions())-1)]
+            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions(self.index))-1)]
             self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
             return randomAction
         else:
@@ -417,14 +444,14 @@ class ParticleFilter():
         if (self.team == "red"):
             direction = 1
         else:
-            direction = 0
+            direction = -1
 
         prevThreats = [None,None,None,None]
         prevThreats[self.enemyIndices[0]] = MyAgents.stats["prevThreatA"]
         prevThreats[self.enemyIndices[1]] = MyAgents.stats["prevThreatB"]
         distribution = origDistribution.copy()
         for state in distribution:
-            if(prevThreats[enemy] < .25 and (state[0] - selfPosition[0])*direction > 0):
+            if(prevThreats[enemy] < .25 and (state[0] - selfPosition[0])*direction < 0):
                 distribution[state] = 0
             elif(prevThreats[enemy] > .50 and (state[0] - selfPosition[0])*direction > 0):
                 distribution[state] = 0
@@ -477,6 +504,6 @@ class ParticleFilter():
         else:
             distribution = util.Counter()
             distribution[self.enemyStartB] = 1
-            particleList = [self.enemyStartB for x in range(self.numParticles)]
+            particleList = [self.enemyStartB] * self.numParticles
 
         return distribution, particleList
