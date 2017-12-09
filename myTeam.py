@@ -173,7 +173,6 @@ class TestDefender(MyAgents):
             if (self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos) <= bestAction[1] and successor.getAgentState(self.index).configuration.pos[0] in range(defenderLimitZone[0], defenderLimitZone[1])):
                 bestAction[0] = action
                 bestAction[1] = self.distancer.getDistance(successor.getAgentState(self.index).configuration.pos, targetPos)
-        print("target:", target)
         if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
             randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions(self.index))-1)]
             self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
