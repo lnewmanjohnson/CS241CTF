@@ -218,35 +218,7 @@ class TestDefender(MyAgents):
             else:
                 #tests for Zone C
                 zoneDistribution[2] += targetDistribution[state]
-
-        """
-        for state in targetDistribution:
-            # the numbers in the conditionals, 18 and 13, may need to be changed in the future to tune
-            if (self.team == "red" and state[0] > 17):                                          
-                probInBackCourt += targetDistribution[state]
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 9):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
-            elif (self.team == "blue" and state[0] < 13):               #TODO I just did this for RED, BLUE is outdated
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 9):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
-        """
-
-        #print("probInBackCourt:", probInBackCourt)
-        #print("zoneDistribution:", zoneDistribution)
+                
         if (probInBackCourt > .5):                                  
         #the strictness of these inequalities probably does not really matter
             return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
@@ -254,7 +226,7 @@ class TestDefender(MyAgents):
             return self.chase(gameState, target)
 
 
-    def assumePost(self, gameState, postIndex):
+    def assumePost(self, gameState, postIndex):s
         #this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
