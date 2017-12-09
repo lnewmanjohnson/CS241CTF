@@ -469,6 +469,8 @@ def nSample(distribution, values, n):
     return samples
 
 def sample(distribution, values = None):
+    if distribution.totalCount() == 0:
+        print("YOU TRIED TO SAMPLE AN EMPTY DISTRIBUTION")
     if type(distribution) == Counter:
         items = sorted(distribution.items())
         distribution = [i[1] for i in items]
