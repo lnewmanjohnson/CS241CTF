@@ -417,14 +417,14 @@ class ParticleFilter():
         if (self.team == "red"):
             direction = 1
         else:
-            direction = 0
+            direction = -1
 
         prevThreats = [None,None,None,None]
         prevThreats[self.enemyIndices[0]] = MyAgents.stats["prevThreatA"]
         prevThreats[self.enemyIndices[1]] = MyAgents.stats["prevThreatB"]
         distribution = origDistribution.copy()
         for state in distribution:
-            if(prevThreats[enemy] < .25 and (state[0] - selfPosition[0])*direction > 0):
+            if(prevThreats[enemy] < .25 and (state[0] - selfPosition[0])*direction < 0):
                 distribution[state] = 0
             elif(prevThreats[enemy] > .50 and (state[0] - selfPosition[0])*direction > 0):
                 distribution[state] = 0
