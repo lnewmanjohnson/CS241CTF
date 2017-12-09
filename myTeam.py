@@ -87,7 +87,6 @@ class TestDefender(MyAgents):
             self.defensePoints = [(19, 3), (19, 6), (18, 11)]
             enemyStartA = (1, 2)
             enemyStartB = (1, 1)
-        print("self.enemyIndices", self.enemyIndices)
         i = 1
         while (i <= self.numParticles):
             MyAgents.particleListA.append(enemyStartA)
@@ -136,50 +135,13 @@ class TestDefender(MyAgents):
         MyAgents.stats["prevThreatA"] = threatA
         MyAgents.stats["prevThreatB"] = threatB
 
-        if (target == "A"):
-            targetDistribution = MyAgents.distributionA
-        else:
-            targetDistribution = MyAgents.distributionB
-        probInBackCourt = 0
-        zoneDistribution = [0, 0 ,0]
-        for state in targetDistribution:
-            # the numbers in the conditionals, 17 and 14, may need to be changed in the future to tune
-            if (self.team == "red" and state[0] > 17):                      #TODO ADD CHECK TO ONLY CALCULATE FOR STATES THAT ARE A THEAT
-                probInBackCourt += targetDistribution[state]
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 9):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
-            elif (self.team == "blue" and state[0] < 14):            
-                if (state[1] <= 4):
-                    #tests for Zone A
-                    zoneDistribution[0] += targetDistribution[state]
-                elif (state[1] <= 9):
-                    #tests for Zone B
-                    zoneDistribution[1] += targetDistribution[state]
-                else:
-                    #tests for Zone C
-                    zoneDistribution[2] += targetDistribution[state]
 
-
-        #print("probInBackCourt for ", target, " is: ", probInBackCourt)
-        #TODO currently it does not know when enemy is actually in back court its done by a focal point
-        if (probInBackCourt > .5):                                  
-        #the strictness of these inequalities probably does not really matter
-            return self.pointDefense(gameState, probInBackCourt, zoneDistribution)
-        else:
-            return self.chase(gameState, target)
-
+        # TODO THE FUTURE SITE OF THE SCAREDTIMER SWITCH
+        return self.pointDefense(gameState)
 
 
     def chase(self, gameState, target):
         #this function just tries to run to the square where the ghost most likely is
-
 
         if (target == "A"):
             targetPos = MyAgents.distributionA.argMax()
@@ -221,16 +183,50 @@ class TestDefender(MyAgents):
         
 
 
-    def pointDefense(self, gameState, probInBackCourt, zoneDistribution):
+    def pointDefense(self, gameState):
         #this function is a switch to tell the defenders how to play point defense
+        if (self.team == "red"):
+            defenseLine = 17
+            direction = 1
+        else:
+            defenseLine = 13
+            direction = (-1)
 
-        #print("running assumePost with zone: ", zoneDistribution.index(max(zoneDistribution)))
-        #print("trying to reach: ", self.defensePoints[zoneDistribution.index(max(zoneDistribution))])
-        return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
-        #TODO flesh out a more nuanced transition function between posts
+
+        probInBackCourt = 0
+        zoneDistribution = [0, 0 ,0]
+
+        target, prevThreatA, prevThreatB = self.determineTarget(gameState, MyAgents.distributionA, MyAgents.distributionB)
+        MyAgents.stats["prevThreatA"] = prevThreatA
+        MyAgents.stats["prevThreatB"] = prevThreatB
+
+        if (target == "A"):
+            targetDistribution = MyAgents.distributionA
+        else:
+            targetDistribution = MyAgents.distributionB
+
+        for state in targetDistribution:
+            if ((state[0] - defenseLine)*direction > 0):
+                #tests if they are beyond the 
+                probInBackCourt += targetDistribution[state]
+            if (state[1] <= 4):
+                #test for Zone A
+                zoneDistribution[0] += targetDistribution[state]
+            elif (state[1] <= 9):
+                #tests for Zone B
+                zoneDistribution[1] += targetDistribution[state]
+            else:
+                #tests for Zone C
+                zoneDistribution[2] += targetDistribution[state]
+                
+        if (probInBackCourt > .5):                                  
+        #the strictness of these inequalities probably does not really matter
+            return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
+        else:
+            return self.chase(gameState, target)
 
 
-    def assumePost(self, gameState, postIndex):
+    def assumePost(self, gameState, postIndex):s
         #this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
@@ -243,7 +239,7 @@ class TestDefender(MyAgents):
 
         #a small method to check if the agent got stuck somehow
         if (self.runStallStats(bestAction[0], self.getSuccessor(gameState, bestAction[0])) == True):
-            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions())-1)]
+            randomAction = gameState.getLegalActions(self.index)[random.randint(0, len(gameState.getLegalActions(self.index))-1)]
             self.runStallStats(randomAction, self.getSuccessor(gameState, bestAction[0]))
             return randomAction
         else:
@@ -477,6 +473,6 @@ class ParticleFilter():
         else:
             distribution = util.Counter()
             distribution[self.enemyStartB] = 1
-            particleList = [self.enemyStartB for x in range(self.numParticles)]
+            particleList = [self.enemyStartB] * self.numParticles
 
         return distribution, particleList
