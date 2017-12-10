@@ -58,6 +58,8 @@ class MyAgents(CaptureAgent):
     stats = {}
     max_time = 0
     roles = [None, None, None, None]
+    isGuarding = [None, None, None, None]
+    isChasing = [None, None, None, None]
     top = -1
 
 class TestDefender(MyAgents):
@@ -154,14 +156,7 @@ class TestDefender(MyAgents):
         foodList = self.getFood(successor).asList()
         safetyScore = self.getSafetyScore(successor)
         features['successorScore'] = 0
-        """
-        if self.team == "red" and (25, 10) in gameState.data.capsules:
-            distance = self.getMazeDistance(myPos, (25, 10))
-            features['successorScore'] -= 50 * distance
-        if self.team == "blue" and (6, 5) in gameState.data.capsules:
-            distance = self.getMazeDistance(myPos, (6, 5))
-            features['successorScore'] -= 50 * distance
-        """
+
         if safetyScore > 50 and len(foodList) > 2 and myState.numCarrying < 5:
             features['successorScore'] += - 2*len(foodList) + safetyScore + 10*myState.numReturned
             opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
@@ -189,7 +184,6 @@ class TestDefender(MyAgents):
         # Compute distance to the nearest food
         if len(foodList) > 0:
             myPos = successor.getAgentState(self.index).getPosition()
-
             if MyAgents.roles[self.index] == "offense" and MyAgents.roles[(self.index + 2) % 4] == "offense":
                 if MyAgents.top == self.index:
                     altFoodList = []
@@ -205,9 +199,10 @@ class TestDefender(MyAgents):
                             altFoodList.append(food)
                     minDistance = min([self.getMazeDistance(myPos, food) for food in altFoodList])
                     features['distanceToFood'] = minDistance
+            else:
+                minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
+                features['distanceToFood'] = minDistance
 
-            minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-            features['distanceToFood'] = minDistance
         return features
 
     def getWeights(self, gameState, action):
@@ -274,7 +269,6 @@ class TestDefender(MyAgents):
 
     def chooseAction(self, gameState):
         # raw_input()
-        print(MyAgents.roles)
 
         opp_timer = 99
         opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
@@ -283,6 +277,8 @@ class TestDefender(MyAgents):
             opp_timer = min(opp_timer, opp_state.scaredTimer)
         if opp_timer > 3 and MyAgents.roles[self.index] == "defense":
             MyAgents.roles[self.index] == "offense"
+            if gameState.getAgentPosition(self.index)[1] > gameState.getAgentPosition((self.index + 2) % 4)[1]:
+                MyAgents.top = self.index
             return self.offenseChooseAction(gameState)
         if opp_timer == 0 and self.index > 2 and MyAgents.roles[self.index] == "offense":
             MyAgents.roles[self.index] == "defense"
@@ -322,6 +318,7 @@ class TestDefender(MyAgents):
 
     def chase(self, gameState, target):
         # this function just tries to run to the square where the ghost most likely is
+        MyAgents.isChasing[self.index] = target
 
         if (target == "A"):
             targetPos = MyAgents.distributionA.argMax()
@@ -401,13 +398,23 @@ class TestDefender(MyAgents):
                 # tests for Zone C
                 zoneDistribution[2] += targetDistribution[state]
 
-        if (probInBackCourt > .5):
+        if (probInBackCourt > .5 or MyAgents.isChasing[(self.index + 2) % 4] == target):
             # the strictness of these inequalities probably does not really matter
             return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
         else:
             return self.chase(gameState, target)
 
     def assumePost(self, gameState, postIndex):
+        MyAgents.isChasing[self.index] = None
+        if (postIndex == MyAgents.isGuarding[(self.index + 2) % 4]):
+            if (postIndex == 2 or postIndex == 0):
+                postIndex = 1
+            else:
+                if not(MyAgents.isGuarding[self.index] == None):
+                    postIndex = MyAgents.isGuarding[self.index]
+                else:
+                    postIndex = 1
+        MyAgents.isGuarding[self.index] = postIndex
         # this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
