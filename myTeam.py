@@ -23,7 +23,7 @@ import game
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='OffensiveReflexAgent', second='TestDefender'):
+               first='TestDefender', second='TestDefender'):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -48,27 +48,43 @@ def createTeam(firstIndex, secondIndex, isRed,
 ##########
 
 
-class ReflexCaptureAgent(CaptureAgent):
-    """
-    A base class for reflex agents that chooses score-maximizing actions
-    """
-    agents = [0, 0, 0, 0]
+class MyAgents(CaptureAgent):
+    distributionA = util.Counter()
+    distributionB = util.Counter()
+    particleListA = []
+    particleListB = []
+    isInitialized = False
+    numParticles = 1000
+    stats = {}
+    max_time = 0
+    roles = [None, None, None, None]
 
-    def registerInitialState(self, gameState):
-        self.start = gameState.getAgentPosition(self.index)
-        CaptureAgent.registerInitialState(self, gameState)
+class TestDefender(MyAgents):
 
-    def chooseAction(self, gameState):
+    def offenseChooseAction(self, gameState):
         """
         Picks among the actions with the highest Q(s,a).
         """
-        time.sleep(0.02)
-        actions = gameState.getLegalActions(self.index)
+        if (self.team == "red" and gameState.data.score >= 3) or (self.team == "blue" and gameState.data.score <= -3):
+            MyAgents.roles[self.index] = "defense"
+            return self.chooseAction(gameState)
+        start = time.time()
+        if (self.index == 1 or self.index == 2):
+            # elapseTime for the enemy B agent
+            MyAgents.particleListA = self.PF.elapseTime(gameState, MyAgents.particleListA)
+        if (self.index == 0 or self.index == 3):
+            # elapseTime for the enemy A agent
+            MyAgents.particleListB = self.PF.elapseTime(gameState, MyAgents.particleListB)
 
-        # You can profile your evaluation time by uncommenting these lines
-        # start = time.time()
+        MyAgents.particleListA, MyAgents.distributionA, MyAgents.particleListB, MyAgents.distributionB = self.PF.observe(
+            gameState, MyAgents.particleListA, MyAgents.particleListB, MyAgents.stats)
+
+        enemyDistributions = [None, None, None, None]
+        enemyDistributions[self.enemyIndices[0]] = MyAgents.distributionA
+        enemyDistributions[self.enemyIndices[1]] = MyAgents.distributionB
+
+        actions = gameState.getLegalActions(self.index)
         values = [self.evaluate(gameState, a) for a in actions]
-        # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
 
         maxValue = max(values)
         bestActions = [a for a, v in zip(actions, values) if v == maxValue]
@@ -84,21 +100,13 @@ class ReflexCaptureAgent(CaptureAgent):
                 if dist < bestDist:
                     bestAction = action
                     bestDist = dist
+            elapsed = time.time() - start
+            if elapsed > 0.95:
+                raise ValueError('chooseAction Timeout')
+            MyAgents.max_time = max(MyAgents.max_time, elapsed)
             return bestAction
 
         return random.choice(bestActions)
-
-    def getSuccessor(self, gameState, action):
-        """
-        Finds the next successor which is a grid position (location tuple).
-        """
-        successor = gameState.generateSuccessor(self.index, action)
-        pos = successor.getAgentState(self.index).getPosition()
-        if pos != util.nearestPoint(pos):
-            # Only half a grid position was covered
-            return successor.generateSuccessor(self.index, action)
-        else:
-            return successor
 
     def evaluate(self, gameState, action):
         """
@@ -106,7 +114,6 @@ class ReflexCaptureAgent(CaptureAgent):
         """
         features = self.getFeatures(gameState, action)
         weights = self.getWeights(gameState, action)
-        print("Value: " + str(features * weights))
         return features * weights
 
     def getFeatures(self, gameState, action):
@@ -117,22 +124,6 @@ class ReflexCaptureAgent(CaptureAgent):
         successor = self.getSuccessor(gameState, action)
         features['successorScore'] = self.getScore(successor)
         return features
-
-    def getWeights(self, gameState, action):
-        """
-        Normally, weights do not depend on the gamestate.  They can be either
-        a counter or a dictionary.
-        """
-        return {'successorScore': 1.0}
-
-
-class OffensiveReflexAgent(ReflexCaptureAgent):
-    """
-    A reflex agent that seeks food. This is an agent
-    we give you to get an idea of what an offensive agent might look like,
-    but it is by no means the best or only way to build an offensive agent.
-    """
-    agents = [0, 0, 0, 0]
 
     def getSafetyScore(self, gameState):
         myPos = gameState.getAgentPosition(self.index)
@@ -148,12 +139,19 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                 opp_timer = opp_state.scaredTimer
                 opp_pos = gameState.getAgentPosition(opp)
                 if opp_pos is not None and not (
-                        opp_state.isPacman and myState.scaredTimer > 0): #and (opp_pos[0] - 16) < (16 - myPos[0]):
+                        opp_state.isPacman and myState.scaredTimer > 0):
                     distance = self.getMazeDistance(myPos, opp_pos)
                     if distance > opp_timer and distance <= 6:
                         safety_score -= 150 / distance
-
-        print(safety_score)
+                if opp_pos is None:
+                    if opp < 2:
+                        opp_pos = MyAgents.distributionA.argMax()
+                    else:
+                        opp_pos = MyAgents.distributionB.argMax()
+                    distance = self.getMazeDistance(myPos, opp_pos)
+                    if distance < 6:
+                        distance = 7
+                    safety_score -= 10 / distance
         return safety_score
 
     def getFeatures(self, gameState, action):
@@ -163,8 +161,17 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
         myPos = successor.getAgentPosition(self.index)
         foodList = self.getFood(successor).asList()
         safetyScore = self.getSafetyScore(successor)
-        if safetyScore > 50 and len(foodList) > 2:
-            features['successorScore'] = -len(foodList) + safetyScore
+        features['successorScore'] = 0
+        """
+        if self.team == "red" and (25, 10) in gameState.data.capsules:
+            distance = self.getMazeDistance(myPos, (25, 10))
+            features['successorScore'] -= 50 * distance
+        if self.team == "blue" and (6, 5) in gameState.data.capsules:
+            distance = self.getMazeDistance(myPos, (6, 5))
+            features['successorScore'] -= 50 * distance
+        """
+        if safetyScore > 50 and len(foodList) > 2 and myState.numCarrying < 8:
+            features['successorScore'] += - 2*len(foodList) + safetyScore
             opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
             for opp in opps_index:
                 opp_state = successor.getAgentState(opp)
@@ -172,8 +179,8 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
                 opp_pos = successor.getAgentPosition(opp)
                 if opp_pos is not None:
                     distance = self.getMazeDistance(myPos, opp_pos)
-                    if distance <= 6 and (opp_state.isPacman or opp_timer > distance):
-                        features['successorScore'] += 10/distance
+                    if distance <= 3 and (opp_state.isPacman or opp_timer > distance + 2):
+                        features['successorScore'] += 5/distance
                     if opp_pos == (1, 2) or (opp_timer == 0 and gameState.getAgentState(opp).scaredTimer > 1):
                         features['successorScore'] += 10000
         else:
@@ -188,8 +195,7 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
             features['successorScore'] = score + safetyScore
 
         # Compute distance to the nearest food
-
-        if len(foodList) > 0:  # This should always be True,  but better safe than sorry
+        if len(foodList) > 0:
             myPos = successor.getAgentState(self.index).getPosition()
             minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
             features['distanceToFood'] = minDistance
@@ -198,19 +204,6 @@ class OffensiveReflexAgent(ReflexCaptureAgent):
     def getWeights(self, gameState, action):
         return {'successorScore': 100, 'distanceToFood': -1}
 
-
-class MyAgents(CaptureAgent):
-    distributionA = util.Counter()
-    distributionB = util.Counter()
-    particleListA = []
-    particleListB = []
-    isInitialized = False
-    numParticles = 1000
-    stats = {}
-
-
-class TestDefender(MyAgents):
-
     def registerInitialState(self, gameState):
 
         self.PF = ParticleFilter(gameState, self.index, MyAgents.numParticles)
@@ -218,6 +211,10 @@ class TestDefender(MyAgents):
         CaptureAgent.registerInitialState(self, gameState)
 
         self.start = gameState.getAgentPosition(self.index)  # Start position
+        if self.index < 2:
+            MyAgents.roles[self.index] = "offense"
+        else:
+            MyAgents.roles[self.index] = "defense"
 
         # of the form [action, position, timeSpentInPosition]
         self.prevStats = ["Stop", [0, 0], 0]
@@ -268,6 +265,9 @@ class TestDefender(MyAgents):
 
     def chooseAction(self, gameState):
         # raw_input()
+        if MyAgents.roles[self.index] == "offense":
+            return self.offenseChooseAction(gameState)
+        start = time.time()
         if (self.index == 1 or self.index == 2):
             # elapseTime for the enemy B agent
             MyAgents.particleListA = self.PF.elapseTime(gameState, MyAgents.particleListA)
@@ -287,6 +287,10 @@ class TestDefender(MyAgents):
         MyAgents.stats["prevThreatB"] = threatB
 
         # TODO THE FUTURE SITE OF THE SCAREDTIMER SWITCH
+        elapsed = time.time() - start
+        if elapsed > 0.95:
+            raise ValueError('ChooseAction Timeout')
+        MyAgents.max_time = max(MyAgents.max_time, elapsed)
         return self.pointDefense(gameState)
 
     def chase(self, gameState, target):
@@ -312,8 +316,7 @@ class TestDefender(MyAgents):
         for action in gameState.getLegalActions(self.index):
             successor = self.getSuccessor(gameState, action)
             if (successor.getAgentState(self.index).configuration.pos == targetPos and
-                    successor.getAgentState(self.index).configuration.pos[0] in range(defenderLimitZone[0],
-                                                                                      defenderLimitZone[1])):
+                    successor.getAgentState(self.index).configuration.pos[0]):
                 # the defender is about to eat the enemy
                 if (target == "A"):
                     MyAgents.distributionA, MyAgents.particleListA = self.PF.eat(target)
@@ -436,8 +439,8 @@ class TestDefender(MyAgents):
         # this function runs upkeep on the relevant stall stats and tries to find out
         # if the agent is stuck (same move more than 5 times)
         # prevStats is of the form: [action, position, timeSpentInPosition]
-
-        if (action == self.prevStats[0] and successor == self.prevStats[1]):
+        #TODO: Fix this line
+        if (action == self.prevStats[0]): #and successor == self.prevStats[1]):
             self.prevStats[2] += 1
             if (self.prevStats[2] >= 5):
                 return True
