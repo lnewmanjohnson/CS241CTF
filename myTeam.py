@@ -275,7 +275,8 @@ class TestDefender(MyAgents):
         for opp in opps_index:
             opp_state = gameState.getAgentState(opp)
             opp_timer = min(opp_timer, opp_state.scaredTimer)
-        if opp_timer > 3 and MyAgents.roles[self.index] == "defense":
+        if opp_timer > 3 and MyAgents.roles[self.index] == "defense" and ((self.team == "red" and gameState.data.score < 3) or (
+                    self.team == "blue" and gameState.data.score > -3)):
             MyAgents.roles[self.index] == "offense"
             if gameState.getAgentPosition(self.index)[1] > gameState.getAgentPosition((self.index + 2) % 4)[1]:
                 MyAgents.top = self.index
