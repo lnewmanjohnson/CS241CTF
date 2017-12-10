@@ -323,6 +323,7 @@ class TestDefender(MyAgents):
 
     def chase(self, gameState, target):
         # this function just tries to run to the square where the ghost most likely is
+        MyAgents.isChasing[self.index] = target
 
         if (target == "A"):
             targetPos = MyAgents.distributionA.argMax()
@@ -402,13 +403,14 @@ class TestDefender(MyAgents):
                 # tests for Zone C
                 zoneDistribution[2] += targetDistribution[state]
 
-        if (probInBackCourt > .5):
+        if (probInBackCourt > .5 or MyAgents.isChasing[(self.index + 2) % 4] == target):
             # the strictness of these inequalities probably does not really matter
             return self.assumePost(gameState, zoneDistribution.index(max(zoneDistribution)))
         else:
             return self.chase(gameState, target)
 
     def assumePost(self, gameState, postIndex):
+        MyAgents.isChasing[self.index] = None
         if (postIndex == MyAgents.isGuarding[(self.index + 2) % 4]):
             if (postIndex == 2 or postIndex == 0):
                 postIndex = 1
