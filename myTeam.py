@@ -58,6 +58,7 @@ class MyAgents(CaptureAgent):
     stats = {}
     max_time = 0
     roles = [None, None, None, None]
+    top = -1
 
 class TestDefender(MyAgents):
 
@@ -188,6 +189,23 @@ class TestDefender(MyAgents):
         # Compute distance to the nearest food
         if len(foodList) > 0:
             myPos = successor.getAgentState(self.index).getPosition()
+
+            if MyAgents.roles[self.index] == "offense" and MyAgents.roles[(self.index + 2) % 4] == "offense":
+                if MyAgents.top == self.index:
+                    altFoodList = []
+                    for food in foodList:
+                        if food[1] > 7:
+                            altFoodList.append(food)
+                    minDistance = min([self.getMazeDistance(myPos, food) for food in altFoodList])
+                    features['distanceToFood'] = minDistance
+                else:
+                    altFoodList = []
+                    for food in foodList:
+                        if food[1] < 8:
+                            altFoodList.append(food)
+                    minDistance = min([self.getMazeDistance(myPos, food) for food in altFoodList])
+                    features['distanceToFood'] = minDistance
+
             minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
             features['distanceToFood'] = minDistance
         return features
