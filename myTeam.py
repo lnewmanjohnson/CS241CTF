@@ -58,6 +58,8 @@ class MyAgents(CaptureAgent):
     stats = {}
     max_time = 0
     roles = [None, None, None, None]
+    isGuarding = [None, None, None, None]
+    isChasing = [None, None, None, None]
     top = -1
 
 class TestDefender(MyAgents):
@@ -274,7 +276,6 @@ class TestDefender(MyAgents):
 
     def chooseAction(self, gameState):
         # raw_input()
-        print(MyAgents.roles)
 
         opp_timer = 99
         opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
@@ -408,6 +409,15 @@ class TestDefender(MyAgents):
             return self.chase(gameState, target)
 
     def assumePost(self, gameState, postIndex):
+        if (postIndex == MyAgents.isGuarding[(self.index + 2) % 4]):
+            if (postIndex == 2 or postIndex == 0):
+                postIndex = 1
+            else:
+                if not(MyAgents.isGuarding[self.index] == None):
+                    postIndex = MyAgents.isGuarding[self.index]
+                else:
+                    postIndex = 1
+        MyAgents.isGuarding[self.index] = postIndex
         # this function sends the agent toward either post a, b, or c along the perimeter
         myPos = gameState.getAgentPosition(self.index)
         bestAction = ["Stop", self.distancer.getDistance(myPos, self.defensePoints[postIndex])]
