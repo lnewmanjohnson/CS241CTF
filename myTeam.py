@@ -116,15 +116,6 @@ class TestDefender(MyAgents):
         weights = self.getWeights(gameState, action)
         return features * weights
 
-    def getFeatures(self, gameState, action):
-        """
-        Returns a counter of features for the state
-        """
-        features = util.Counter()
-        successor = self.getSuccessor(gameState, action)
-        features['successorScore'] = self.getScore(successor)
-        return features
-
     def getSafetyScore(self, gameState):
         myPos = gameState.getAgentPosition(self.index)
         myState = gameState.getAgentState(self.index)
@@ -171,7 +162,7 @@ class TestDefender(MyAgents):
             features['successorScore'] -= 50 * distance
         """
         if safetyScore > 50 and len(foodList) > 2 and myState.numCarrying < 5:
-            features['successorScore'] += - 2*len(foodList) + safetyScore
+            features['successorScore'] += - 2*len(foodList) + safetyScore + 10*myState.numReturned
             opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
             for opp in opps_index:
                 opp_state = successor.getAgentState(opp)
@@ -265,7 +256,7 @@ class TestDefender(MyAgents):
 
     def chooseAction(self, gameState):
         # raw_input()
-
+        print(MyAgents.roles)
 
         opp_timer = 99
         opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
@@ -306,8 +297,8 @@ class TestDefender(MyAgents):
 
         # TODO THE FUTURE SITE OF THE SCAREDTIMER SWITCH
         elapsed = time.time() - start
-        if elapsed > 0.95:
-            raise ValueError('ChooseAction Timeout')
+        #if elapsed > 0.95:
+            #raise ValueError('ChooseAction Timeout')
         MyAgents.max_time = max(MyAgents.max_time, elapsed)
         return self.pointDefense(gameState)
 
