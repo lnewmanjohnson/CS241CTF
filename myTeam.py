@@ -170,7 +170,7 @@ class TestDefender(MyAgents):
             distance = self.getMazeDistance(myPos, (6, 5))
             features['successorScore'] -= 50 * distance
         """
-        if safetyScore > 50 and len(foodList) > 2 and myState.numCarrying < 8:
+        if safetyScore > 50 and len(foodList) > 2 and myState.numCarrying < 5:
             features['successorScore'] += - 2*len(foodList) + safetyScore
             opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
             for opp in opps_index:
@@ -265,8 +265,26 @@ class TestDefender(MyAgents):
 
     def chooseAction(self, gameState):
         # raw_input()
+
+
+        opp_timer = 99
+        opps_index = [(self.index + 1) % 4, (self.index + 3) % 4]
+        for opp in opps_index:
+            opp_state = gameState.getAgentState(opp)
+            opp_timer = min(opp_timer, opp_state.scaredTimer)
+        if opp_timer > 3 and MyAgents.roles[self.index] == "defense":
+            MyAgents.roles[self.index] == "offense"
+            return self.offenseChooseAction(gameState)
+        if opp_timer == 0 and self.index > 2 and MyAgents.roles[self.index] == "offense":
+            MyAgents.roles[self.index] == "defense"
         if MyAgents.roles[self.index] == "offense":
             return self.offenseChooseAction(gameState)
+        if self.index < 2:
+            if (self.team == "red" and gameState.data.score <= 0) or (
+                    self.team == "blue" and gameState.data.score >= 0):
+                MyAgents.roles[self.index] = "offense"
+                return self.offenseChooseAction(gameState)
+
         start = time.time()
         if (self.index == 1 or self.index == 2):
             # elapseTime for the enemy B agent
